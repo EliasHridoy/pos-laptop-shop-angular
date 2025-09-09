@@ -54,9 +54,15 @@ import { AuthService } from '../../services/auth.service';
           </tr>
         </tbody>
       </table>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-        <div class="badge">Total: ৳{{ total() | number:'1.2-2' }}</div>
-        <div style="display:flex; gap:8px;">
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="badge">Total: ৳{{ total() | number:'1.2-2' }}</div>
+          <div>
+            <label>Payment Amount: </label>
+            <input class="input" type="number" [(ngModel)]="paymentAmount" [max]="total()" style="width:150px" placeholder="Enter amount"/>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn secondary" (click)="cart=[]">Clear</button>
           <button class="btn" (click)="checkout()">Checkout</button>
         </div>
@@ -74,6 +80,7 @@ export class SalesNewComponent {
   customer: any = { name: '', phone: '', email: '', address: '' };
   q = ''; results: any[] = []; cart: any[] = [];
   currentUser$ = this.auth.user$;
+  paymentAmount: number = 0;
 
   async search() {
     const nameHits = await this.products.searchByName(this.q);
@@ -103,10 +110,14 @@ export class SalesNewComponent {
     });
 
     const items = this.cart.map(c => ({ productId: c.id, qty: +c.qty, sellPrice: +c.sellPrice }));
+    const totalAmount = this.total();
+    const paidAmount = this.paymentAmount || totalAmount; // If no payment amount specified, treat as full payment
+    
     const saleId = await this.sales.createSale({ 
       customer: this.customer, 
       items, 
       type: this.mode,
+      paid: paidAmount,
       soldBy: currentUser ? {
         uid: currentUser.uid,
         displayName: currentUser.displayName,
