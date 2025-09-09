@@ -9,7 +9,7 @@ export class SalesService {
   private counters = inject(CountersService);
   private notification = inject(NotificationService);
 
-  async createSale(payload: { customer?: any, items: any[], type: 'DIRECT'|'INSTANT', note?: string }) {
+  async createSale(payload: { customer?: any, items: any[], type: 'DIRECT'|'INSTANT', note?: string, soldBy?: { uid: string, displayName: string|null, email: string|null } }) {
     if (!payload.items?.length) throw new Error('No items');
     try {
       const saleId = await runTransaction(this.db, async (tx) => {
@@ -58,6 +58,7 @@ export class SalesService {
         costTotal,
         profit: subTotal - costTotal,
         customer: payload.customer || null,
+        soldBy: payload.soldBy || null,
         note: payload.note || '',
         status: 'COMPLETED',
         createdAt: serverTimestamp(),

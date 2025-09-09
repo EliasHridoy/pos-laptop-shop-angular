@@ -4,6 +4,7 @@ import { ProductsService } from '../../services/products.service';
 import { SalesService } from '../../services/sales.service';
 import { Router } from '@angular/router';
 import { DecimalPipe, NgFor } from '@angular/common';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-sales-new',
@@ -21,7 +22,7 @@ import { DecimalPipe, NgFor } from '@angular/common';
         <div>
           <h3>Customer</h3>
           <div class="grid two">
-            <input class="input" placeholder="Name" [(ngModel)]="customer.name" />
+            <input class="input" placeholder="Name" [(ngModel)]="customer.name"  required/>
             <input class="input" placeholder="Phone" [(ngModel)]="customer.phone" />
           </div>
           <input class="input" type="email" placeholder="Email (optional)" [(ngModel)]="customer.email" />
@@ -42,13 +43,14 @@ import { DecimalPipe, NgFor } from '@angular/common';
 
       <h3>Cart</h3>
       <table class="table">
-        <thead><tr><th>Item</th><th>Qty</th><th>Sell Price</th><th>Line</th></tr></thead>
+        <thead><tr><th>Item</th><th>Qty</th><th>Sell Price</th><th>Line</th><th>Action</th></tr></thead>
         <tbody>
           <tr *ngFor="let c of cart; let i = index">
             <td>{{c.name}}</td>
             <td><input class="input" type="number" [(ngModel)]="c.qty" /></td>
             <td><input class="input" type="number" [(ngModel)]="c.sellPrice" /></td>
             <td>৳{{(c.qty||0) * (c.sellPrice||0) | number:'1.2-2'}}</td>
+            <td><button class="btn secondary" (click)="removeFromCart(i)">Delete</button></td>
           </tr>
         </tbody>
       </table>
@@ -66,10 +68,12 @@ export class SalesNewComponent {
   private products = inject(ProductsService);
   private sales = inject(SalesService);
   private router = inject(Router);
+  private auth = inject(AuthService);
 
   mode: 'DIRECT' | 'INSTANT' = 'DIRECT';
   customer: any = { name: '', phone: '', email: '', address: '' };
   q = ''; results: any[] = []; cart: any[] = [];
+  currentUser$ = this.auth.user$;
 
   async search() {
     const nameHits = await this.products.searchByName(this.q);
@@ -82,12 +86,33 @@ export class SalesNewComponent {
     if (ex) ex.qty += 1;
     else this.cart.push({ id: p.id, name: p.name, qty: 1, sellPrice: p.defaultSellPrice });
   }
+  removeFromCart(index: number) {
+    this.cart.splice(index, 1);
+  }
+
   total() { return this.cart.reduce((s, c) => s + (Number(c.qty || 0) * Number(c.sellPrice || 0)), 0); }
 
   async checkout() {
     if (!this.cart.length) return;
+    
+    const currentUser = await new Promise<any>(resolve => {
+      const subscription = this.auth.user$.subscribe(user => {
+        resolve(user);
+        subscription.unsubscribe();
+      });
+    });
+
     const items = this.cart.map(c => ({ productId: c.id, qty: +c.qty, sellPrice: +c.sellPrice }));
-    const saleId = await this.sales.createSale({ customer: this.customer, items, type: this.mode });
+    const saleId = await this.sales.createSale({ 
+      customer: this.customer, 
+      items, 
+      type: this.mode,
+      soldBy: currentUser ? {
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        email: currentUser.email
+      } : undefined
+    });
     this.router.navigate(['/sales/invoice', saleId]);
   }
 }
