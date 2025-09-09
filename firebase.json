@@ -6,7 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "public",
+    "public": "dist/pos-laptop-shop-angular/browser",
     "ignore": [
       "firebase.json",
       "**/.*",
