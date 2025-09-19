@@ -3,289 +3,349 @@ import { ActivatedRoute } from '@angular/router';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DecimalPipe, NgIf, NgFor } from '@angular/common';
+import { DecimalPipe, NgFor } from '@angular/common';
 
 @Component({
   selector: 'app-invoice',
   standalone: true,
-  imports: [DecimalPipe, NgIf, NgFor],
+  imports: [DecimalPipe, NgFor],
   template: `
-    <h2>Invoice</h2>
-    <div class="card" *ngIf="sale">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <div><b>Invoice:</b> {{sale.invoiceNo}}</div>
-          <div class="muted">Type: {{sale.type}}</div>
-        </div>
-        <button class="btn secondary" (click)="downloadPDF()">Download PDF</button>
+    <div class="invoice-container">
+      <div class="invoice-header">
+        <h2>Invoice Details</h2>
+        <button (click)="downloadPDF()" class="btn btn-primary">Download PDF</button>
       </div>
-      <table class="table" style="margin-top:8px;">
-        <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Price</th><th>Line</th></tr></thead>
-        <tbody>
-          <tr *ngFor="let it of sale.items; let i=index">
-            <td>{{i+1}}</td>
-            <td>{{it.name}}</td>
-            <td>{{it.qty}}</td>
-            <td>৳{{it.sellPrice | number:'1.2-2'}}</td>
-            <td>৳{{(it.qty * it.sellPrice) | number:'1.2-2'}}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="text-align:right; font-weight:bold;">Total: ৳{{sale.total | number:'1.2-2'}}</div>
+      
+      <!-- Your existing template content -->
+      <div class="invoice-preview">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Line</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let it of sale.items; let i = index">
+              <td>{{i+1}}</td>
+              <td>{{it.name}}</td>
+              <td>{{it.qty}}</td>
+              <td>৳{{it.sellPrice | number:'1.2-2'}}</td>
+              <td>৳{{(it.qty * it.sellPrice) | number:'1.2-2'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   `
 })
 export class InvoiceComponent implements OnInit {
+  private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
-  private db = inject(Firestore);
-  sale:any = null;
-  async ngOnInit(){
-    const id = this.route.snapshot.paramMap.get('id')!;
-    const snap = await getDoc(doc(this.db, 'sales', id));
-    if (snap.exists()) this.sale = { id: snap.id, ...(snap.data() as any) };
+  
+  doc!: jsPDF;
+  currentY = 20;
+  
+  sale: any = {
+    invoiceNo: '1261',
+    customerName: 'Mr. Nahidul Islam',
+    customerPhone: '+8801672569397',
+    customerAddress: 'Bashundhara R/A, Dhaka, Bangladesh',
+    advance: 0,
+    items: [
+      {
+        name: 'Lenovo Thinkpad T490L',
+        serialNumber: 'PC1CWOKC',
+        description: 'Intel 5-8th gen, 16GB RAM, 256GB SSD with extended warranty and professional software suite including Microsoft Office',
+        qty: 1,
+        sellPrice: 28500.00
+      }
+    ]
+  };
+  logoBase64: any;
+
+  async ngOnInit() {
+    // Preload logo when component initializes
+    try {
+      this.logoBase64 = await this.getImageAsBase64('https://your-domain.com/logo.png');
+    } catch (error) {
+      console.error('Logo preload failed:', error);
+    }
+    
   }
-  
-  // PDF generation
-  downloadPDF() {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  
-  // Company Header Section
-  this.addCompanyHeader(doc, pageWidth);
-  
-  // Invoice Details Section  
-  this.addInvoiceDetails(doc, pageWidth);
-  
-  // Customer Information Section
-  this.addCustomerInfo(doc);
-  
-  // Items Table
-  this.addItemsTable(doc);
-  
-  // Terms and Conditions
-  this.addTermsAndConditions(doc, pageHeight);
-  
-  // Save the PDF
-  doc.save(`Invoice-${this.sale.invoiceNo}.pdf`);
-}
 
-private addCompanyHeader(doc: jsPDF, pageWidth: number) {
-  // Logo placeholder - you can replace this with actual logo
-  doc.setFillColor(200, 200, 200); // Light gray placeholder
-  doc.rect(15, 10, 30, 20, 'F'); // Rectangle as logo placeholder
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  doc.text('LOGO', 28, 21); // Placeholder text
-  
-  // Company name and details
-  doc.setFontSize(18);
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.text('YOUR COMPANY NAME', 50, 20);
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Shop: 708, Level: 7, F5 Square, Mirpur-10,', 50, 26);
-  doc.text('Mirpur TSO, Dhaka-1216, Bangladesh', 50, 30);
-  doc.text('Phone: +88 01830 583433', 50, 34);
-  doc.text('       +88 01610 974372', 50, 38);
-  
-  // Sales Receipt header on right
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  const receiptText = 'Sales Receipt';
-  const receiptWidth = doc.getTextWidth(receiptText);
-  doc.text(receiptText, pageWidth - receiptWidth - 15, 20);
-  
-  // Date
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  const dateText = `Date: ${new Date().toLocaleDateString('en-GB')}`;
-  const dateWidth = doc.getTextWidth(dateText);
-  doc.text(dateText, pageWidth - dateWidth - 15, 26);
-  
-  // Invoice number on right
-  const invoiceText = `Invoice: ${this.sale.invoiceNo || '1261'}`;
-  const invoiceWidth = doc.getTextWidth(invoiceText);
-  doc.text(invoiceText, pageWidth - invoiceWidth - 15, 30);
-}
-
-private addInvoiceDetails(doc: jsPDF, pageWidth: number) {
-  // Draw border around invoice details
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(15, 45, pageWidth - 30, 25);
-  
-  // Customer details section
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Name:', 20, 52);
-  doc.text('Phone:', 120, 52);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text(this.sale.customerName || 'Mr. Customer Name', 35, 52);
-  doc.text(this.sale.customerPhone || '+8801XXXXXXXXX', 135, 52);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Address:', 20, 58);
-  doc.text('Email:', 120, 58);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text(this.sale.customerAddress || 'Customer Address, Dhaka, Bangladesh', 35, 58);
-  doc.text(this.sale.customerEmail || '', 135, 58);
-}
-
-private addCustomerInfo(doc: jsPDF) {
-  const startY = 75;
-  
-  // Table header with borders
-  doc.setFillColor(240, 240, 240);
-  doc.rect(15, startY, 180, 8, 'F');
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.3);
-  doc.rect(15, startY, 180, 8);
-  
-  // Header text
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Product Name', 17, startY + 5);
-  doc.text('S/N', 70, startY + 5);
-  doc.text('Description', 90, startY + 5);
-  doc.text('Quantity', 130, startY + 5);
-  doc.text('Unit Price', 150, startY + 5);
-  doc.text('Value', 175, startY + 5);
-  
-  // Add vertical lines for columns
-  const columnPositions = [15, 65, 85, 125, 145, 165, 195];
-  columnPositions.forEach(x => {
-    doc.line(x, startY, x, startY + 8);
+  // Helper method to convert image URL to base64
+private getImageAsBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // Handle CORS if needed
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      ctx?.drawImage(img, 0, 0);
+      
+      const dataURL = canvas.toDataURL('image/png');
+      resolve(dataURL);
+    };
+    
+    img.onerror = (error) => reject(error);
+    img.src = url;
   });
 }
 
-private addItemsTable(doc: jsPDF) {
-  const startY = 88;
-  let currentY = startY;
-  
-  // Items data
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  
-  this.sale.items.forEach((item: any, index: number) => {
-    const rowHeight = 15;
+  downloadPDF() {
+    this.doc = new jsPDF();
+    this.currentY = 20;
     
-    // Draw row borders
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.3);
-    doc.rect(15, currentY, 180, rowHeight);
+    // Add header
+    this.addCompanyHeader();
     
-    // Add vertical lines
-    const columnPositions = [15, 65, 85, 125, 145, 165, 195];
-    columnPositions.forEach(x => {
-      doc.line(x, currentY, x, currentY + rowHeight);
+    // Add customer info
+    this.addCustomerInfo();
+    
+    // Add items table with proper text wrapping
+    this.addItemsTable();
+    
+    // Add payment details
+    this.addPaymentDetails();
+    
+    // Add terms and conditions
+    this.addTermsAndConditions();
+    
+    // Save the PDF
+    this.doc.save(`Invoice-${this.sale.invoiceNo}.pdf`);
+  }
+
+  private addCompanyHeader() {
+    const doc = this.doc;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+       // Add logo if available
+    if (this.logoBase64) {
+      const imgWidth = 35;
+      const imgHeight = 25;
+      doc.addImage(this.logoBase64, 'PNG', 15, this.currentY, imgWidth, imgHeight);
+    }
+    
+    // Company name
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('LAPTOP CORE TECHNOLOGY', 50, this.currentY);
+    
+    // Company details
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Shop: 708, Level: 7, F5 Square, Mirpur-10,', 50, this.currentY + 6);
+    doc.text('Mirpur TSO, Dhaka-1216, Bangladesh', 50, this.currentY + 10);
+    doc.text('Phone: +88 01830 583433', 50, this.currentY + 14);
+    doc.text('       +88 01610 974372', 50, this.currentY + 18);
+    
+    // Sales Receipt header on right
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    const receiptText = 'Sales Receipt';
+    const receiptWidth = doc.getTextWidth(receiptText);
+    doc.text(receiptText, pageWidth - receiptWidth - 15, this.currentY);
+    
+    // Date and invoice number
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const dateText = `Date: ${new Date().toLocaleDateString('en-GB')}`;
+    const dateWidth = doc.getTextWidth(dateText);
+    doc.text(dateText, pageWidth - dateWidth - 15, this.currentY + 6);
+    
+    const invoiceText = `Invoice: ${this.sale.invoiceNo}`;
+    const invoiceWidth = doc.getTextWidth(invoiceText);
+    doc.text(invoiceText, pageWidth - invoiceWidth - 15, this.currentY + 10);
+    
+    this.currentY += 35;
+  }
+
+  private addCustomerInfo() {
+    const doc = this.doc;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Customer info table
+    autoTable(doc, {
+      startY: this.currentY,
+      body: [
+        ['Name:', this.sale.customerName || '', 'Phone:', this.sale.customerPhone || ''],
+        ['Address:', this.sale.customerAddress || '', 'Email:', '']
+      ],
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      },
+      columnStyles: {
+        0: { cellWidth: 25, fontStyle: 'bold' },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 25, fontStyle: 'bold' },
+        3: { cellWidth: 60 }
+      },
+      theme: 'grid',
+      margin: { left: 15, right: 15 }
     });
     
-    // Item details
-    doc.text(`${index + 1}. ${item.name}`, 17, currentY + 5);
-    doc.text(item.serialNumber || 'PC1CWOKC', 67, currentY + 5);
-    doc.text(item.description || `Intel 5-8th gen, 16GB RAM, 256GB SSD`, 87, currentY + 5);
-    doc.text(item.qty.toString(), 132, currentY + 5);
-    doc.text(`BDT ${item.sellPrice.toFixed(2)}`, 147, currentY + 5);
-    doc.text(`BDT ${(item.qty * item.sellPrice).toFixed(2)}`, 167, currentY + 5);
+    this.currentY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  private addItemsTable() {
+    const doc = this.doc;
     
-    currentY += rowHeight;
-  });
-  
-  // Total row
-  const totalRowY = currentY;
-  doc.setFillColor(240, 240, 240);
-  doc.rect(15, totalRowY, 180, 10, 'F');
-  doc.rect(15, totalRowY, 180, 10);
-  
-  // Vertical lines for total row
-  const columnPositions = [15, 65, 85, 125, 145, 165, 195];
-  columnPositions.forEach(x => {
-    doc.line(x, totalRowY, x, totalRowY + 10);
-  });
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL AMOUNT', 17, totalRowY + 6);
-  doc.text('1', 132, totalRowY + 6);
-  doc.text(`BDT ${this.sale.total.toFixed(2)}`, 167, totalRowY + 6);
-  
-  // Amount in words
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Total Amount (In Words):', 17, totalRowY + 15);
-  doc.text(this.numberToWords(this.sale.total) + ' taka only', 17, totalRowY + 20);
-  
-  this.addPaymentDetails(doc, totalRowY + 25);
-}
+    // Prepare table data
+    const tableBody: any[][] = [];
+    
+    this.sale.items.forEach((item: any, index: number) => {
+      tableBody.push([
+        `${index + 1}. ${item.name}`,
+        item.serialNumber || 'PC1CWOKC',
+        item.description || 'Intel 5-8th gen, 16GB RAM, 256GB SSD',
+        item.qty.toString(),
+        item.sellPrice.toFixed(2),
+        (item.qty * item.sellPrice).toFixed(2)
+      ]);
+    });
 
-private addPaymentDetails(doc: jsPDF, startY: number) {
-  // Payment details section
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.3);
-  doc.rect(15, startY, 90, 25);
-  
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Received By:', 17, startY + 5);
-  doc.text('Bill Item:', 17, startY + 10);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text('1. Backpack', 35, startY + 15);
-  doc.text('2. Adapter', 35, startY + 18);
-  doc.text('3. Adapter Cable', 35, startY + 21);
-  
-  // Right side payment info
-  doc.rect(105, startY, 90, 25);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Advance:', 142, startY + 5);
-  doc.text('Paid:', 142, startY + 10);
-  doc.text('Signature:', 142, startY + 15);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text(`BDT ${this.sale.advance || '0.00'}`, 165, startY + 5);
-  doc.text(`BDT ${this.sale.total.toFixed(2)}`, 165, startY + 10);
-}
+    // Add total row
+    const totalAmount = this.sale.items.reduce((sum: number, item: any) => 
+      sum + (item.qty * item.sellPrice), 0);
 
-private addTermsAndConditions(doc: jsPDF, pageHeight: number) {
-  const termsY = pageHeight - 40;
-  
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  
-  const terms = [
-    '1. This Product is deemed Dead-On-Arrival (DOA) if it is defective upon receipt. This Product has to be returned to the place of purchase within',
-    'Fifteen (15) days from date of purchase with original box/receipt/bill.',
-    '2. Battery, Broken seal/Tamper, Liquid damage (Due to Liquid damage), Hardware change [Processor, RAM, Hard disk, Mother board], Pin bending',
-    'does not cover Service/Warranty.',
-    '3. Warranty is void if opened/used elsewhere. This Product has to be returned to the place of purchase after taking proper backup. The company is not',
-    'held responsible for any data loss/damage during service. Please avoid shock, liquid damage (Water, soft Drink, Coffee, but not limited to).'
-  ];
-  
-  let currentY = termsY;
-  terms.forEach(term => {
-    doc.text(term, 15, currentY);
-    currentY += 3;
-  });
-}
+    tableBody.push([
+      'TOTAL AMOUNT', '', '', '1', '', totalAmount.toFixed(2)
+    ]);
 
-// Helper method to convert numbers to words (basic implementation)
-private numberToWords(num: number): string {
-  // This is a simplified version - you may want to use a more comprehensive library
-  const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-  const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
-  
-  if (num < 10) return ones[num];
-  if (num < 20) return teens[num - 10];
-  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + ones[num % 10] : '');
-  if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 !== 0 ? ' ' + this.numberToWords(num % 100) : '');
-  
-  return 'Twenty eight thousand five hundred'; // Fallback for demo
-}
+    // Create table with proper text wrapping
+    autoTable(doc, {
+      startY: this.currentY,
+      head: [['Product Name', 'S/N', 'Description', 'Quantity', 'Unit Price\nBDT', 'Value\nBDT']],
+      body: tableBody,
+      
+      // Key settings to prevent overlapping - Solution 1
+      styles: {
+        overflow: 'linebreak',      // Enable text wrapping
+        cellWidth: 'wrap',          // Auto-adjust cell width
+        fontSize: 8,
+        cellPadding: 2,
+        valign: 'top'              // Align text to top of cell
+      },
+      
+      // Column-specific settings to control width and prevent overlap
+      columnStyles: {
+        0: { cellWidth: 45 },       // Product Name - fixed width
+        1: { cellWidth: 20 },       // S/N - fixed width  
+        2: { 
+          cellWidth: 55,            // Description - wider, allows wrapping
+          overflow: 'linebreak'     // Ensure wrapping for long descriptions
+        },
+        3: { cellWidth: 18, halign: 'center' }, // Quantity
+        4: { cellWidth: 22, halign: 'right' },  // Unit Price
+        5: { cellWidth: 25, halign: 'right' }   // Value
+      },
+      
+      // Header styling
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontSize: 9,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      
+      // Alternating row colors for better readability
+      alternateRowStyles: {
+        fillColor: [250, 250, 250]
+      },
+      
+      // Table layout settings
+      tableWidth: 'auto',
+      margin: { left: 15, right: 15 },
+      
+      // Ensure table fits on page
+      pageBreak: 'auto',
+      
+      // Custom styling for total row
+      didParseCell: (data) => {
+        // Make total row bold
+        if (data.section === 'body' && data.row.index === tableBody.length - 1) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [230, 230, 230];
+        }
+      }
+    });
 
+    this.currentY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  private addPaymentDetails() {
+    const doc = this.doc;
+    const totalAmount = this.sale.items.reduce((sum: number, item: any) => 
+      sum + (item.qty * item.sellPrice), 0);
+
+    // Amount in words
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Total Amount (In Words):', 15, this.currentY);
+    doc.text('Twenty eight thousand five hundred taka only', 15, this.currentY + 5);
+    
+    this.currentY += 15;
+
+    // Payment details table
+    autoTable(doc, {
+      startY: this.currentY,
+      body: [
+        ['Received By:', '', 'Advance:', `BDT ${this.sale.advance.toFixed(2)}`],
+        ['Bill Item:', '', 'Paid:', `BDT ${totalAmount.toFixed(2)}`],
+        ['1. Backpack', '1', 'Signature:', ''],
+        ['2. Adapter', '1', '', ''],
+        ['3. Adapter Cable', '1', '', '']
+      ],
+      styles: {
+        fontSize: 8,
+        cellPadding: 2
+      },
+      columnStyles: {
+        0: { cellWidth: 40, fontStyle: 'bold' },
+        1: { cellWidth: 15 },
+        2: { cellWidth: 30, fontStyle: 'bold' },
+        3: { cellWidth: 40 }
+      },
+      theme: 'grid',
+      margin: { left: 15, right: 15 }
+    });
+
+    this.currentY = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  private addTermsAndConditions() {
+    const doc = this.doc;
+    
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    
+    const terms = [
+      '1. This Product is deemed Dead-On-Arrival (DOA) if it is defective upon receipt. This Product has to be returned to the place of purchase within',
+      'Fifteen (15) days from date of purchase with original box/receipt/bill.',
+      '',
+      '2. Battery, Broken seal/Tamper, Liquid damage (Due to Liquid damage), Hardware change [Processor, RAM, Hard disk, Mother board], Pin bending',
+      'does not cover Service/Warranty.',
+      '',
+      '3. Warranty is void if opened/used elsewhere. This Product has to be returned to the place of purchase after taking proper backup. The company is not',
+      'held responsible for any data loss/damage during service. Please avoid shock, liquid damage (Water, soft Drink, Coffee, but not limited to).'
+    ];
+    
+    let currentY = this.currentY;
+    terms.forEach(term => {
+      doc.text(term, 15, currentY);
+      currentY += 3;
+    });
+  }
 }
- 

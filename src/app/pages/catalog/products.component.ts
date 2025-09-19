@@ -82,17 +82,27 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
             </div>
           </div>
 
-          <!-- Stock Details -->
+          <!-- Product Details -->
           <div class="form-section">
-            <h4>Stock Details</h4>
+            <h4>Product Details</h4>
             <div class="details-row">
               <div class="detail-item">
-                <label>Stock Quantity:</label>
-                <span>{{selectedProduct.stockQty}}</span>
+                <label>Product ID:</label>
+                <span>{{selectedProduct.ProductID}}</span>
               </div>
               <div class="detail-item">
                 <label>Cost Price:</label>
                 <span>৳{{selectedProduct.CostPrice}}</span>
+              </div>
+            </div>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Status:</label>
+                <span>{{selectedProduct.Status}}</span>
+              </div>
+              <div class="detail-item" *ngIf="selectedProduct.Description">
+                <label>Description:</label>
+                <span>{{selectedProduct.Description}}</span>
               </div>
             </div>
           </div>
@@ -121,8 +131,9 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
               <th>Brand</th>
               <th>Series</th>
               <th>Model</th>
-              <th>Stock</th>
+              <th>Product ID</th>
               <th>Cost Price</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>
@@ -132,12 +143,19 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
               <td>{{p.Brand}}</td>
               <td>{{p.Series}}</td>
               <td>{{p.Model}}</td>
-              <td>{{p.stockQty}}</td>
+              <td>{{p.ProductID}}</td>
               <td>৳{{p.CostPrice}}</td>
+              <td>{{p.Status}}</td>
               <td class="actions">
-                <button class="btn small info" (click)="viewDetails(p)">View</button>
-                <button class="btn small" (click)="edit(p)">Edit</button>
-                <button class="btn small danger" (click)="remove(p.id)">Delete</button>
+                <button class="btn small info" (click)="viewDetails(p)" title="View Details">
+                  View
+                </button>
+                <button class="btn small" (click)="edit(p)" title="Edit Product">
+                  Edit
+                </button>
+                <button class="btn small danger" (click)="remove(p.id)" title="Delete Product">
+                  Delete
+                </button>
               </td>
             </tr>
           </tbody>
@@ -249,17 +267,31 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
             </div>
           </div>
 
-          <!-- Stock Details -->
+          <!-- Product Details -->
           <div class="form-section">
-            <h4>Stock Details</h4>
+            <h4>Product Details</h4>
             <div class="form-row">
               <div class="form-group">
-                <label>Stock Quantity</label>
-                <input type="number" class="input" [(ngModel)]="form.stockQty" name="stockQty" required />
+                <label>Product ID</label>
+                <input class="input" [(ngModel)]="form.ProductID" name="productId" required />
               </div>
               <div class="form-group">
                 <label>Cost Price</label>
                 <input type="number" class="input" [(ngModel)]="form.CostPrice" name="costPrice" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Description</label>
+                <textarea class="input" [(ngModel)]="form.Description" name="description" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select class="input" [(ngModel)]="form.Status" name="status" required>
+                  <option [value]="ProductStatus.Available">Available</option>
+                  <option [value]="ProductStatus.Sold">Sold</option>
+                  <option [value]="ProductStatus.Servicing">Servicing</option>
+                </select>
               </div>
             </div>
           </div>
@@ -277,6 +309,19 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
     .actions {
       display: flex;
       gap: 0.5rem;
+    }
+    
+    .actions button {
+      min-width: 32px;
+      height: 32px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    fa-icon {
+      font-size: 14px;
     }
 
     .details-container {
@@ -390,7 +435,9 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
 export class ProductsComponent implements OnInit {
   // Component logic
   private svc = inject(ProductsService);
+  readonly ProductStatus = ProductStatus; // Make enum available in template
   private catalog = inject(CatalogService);
+
 
   form: StockInModel = {
     No: undefined,
@@ -405,8 +452,10 @@ export class ProductsComponent implements OnInit {
     Genaration: '',
     RAM: '',
     ROM: '',
-    stockQty: 0,
-    CostPrice: 0
+    ProductID: '',
+    CostPrice: 0,
+    Description: '',
+    Status: ProductStatus.Available
   };
   showForm = false;
   showDetails = false;
@@ -528,8 +577,10 @@ export class ProductsComponent implements OnInit {
       Genaration: '',
       RAM: '',
       ROM: '',
-      stockQty: 0,
-      CostPrice: 0
+      ProductID: '',
+      CostPrice: 0,
+      Description: '',
+      Status: ProductStatus.Available
     };
     this.editingId = null;
     this.showForm = false;
@@ -640,6 +691,8 @@ export interface ExcelData {
   FeedBack?: string;
 }
 
+import { ProductStatus } from '../../models/product-status.enum';
+
 export interface StockInModel {
   No?: number;
   Date?: string;
@@ -653,6 +706,8 @@ export interface StockInModel {
   Genaration?: string;
   RAM?: string;
   ROM?: string;
-  stockQty?: number;
+  ProductID?: string;
   CostPrice?: number;
+  Description?: string;
+  Status?: ProductStatus;
 }

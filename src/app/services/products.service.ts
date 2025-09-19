@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Firestore, addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, 
          orderBy, query, runTransaction, where, startAt, endAt, serverTimestamp } from '@angular/fire/firestore';
 import { NotificationService } from './notification.service';
+import { ProductStatus } from '../models/product-status.enum';
 
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
@@ -31,9 +32,11 @@ export class ProductsService {
         RAM: p.RAM || '',
         ROM: p.ROM || '',
         
-        // Stock Details
-        stockQty: Number(p.stockQty || 0),
+        // Product Details
+        ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
+        Description: p.Description || '',
+        Status: p.Status || 'Available',
         
         // Generated Fields
         details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
@@ -45,7 +48,8 @@ export class ProductsService {
           p.Processor,
           p.Genaration,
           p.RAM,
-          p.ROM
+          p.ROM,
+          p.ProductID
         ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
         
         // Metadata
@@ -82,9 +86,11 @@ export class ProductsService {
         RAM: p.RAM || '',
         ROM: p.ROM || '',
         
-        // Stock Details
-        stockQty: Number(p.stockQty || 0),
+        // Product Details
+        ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
+        Description: p.Description || '',
+        Status: p.Status || 'Available',
         
         // Generated Fields
         details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
@@ -96,7 +102,8 @@ export class ProductsService {
           p.Processor,
           p.Genaration,
           p.RAM,
-          p.ROM
+          p.ROM,
+          p.ProductID
         ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
       });
       this.notification.success('Product updated!');
@@ -118,12 +125,19 @@ export class ProductsService {
   }
 
   // Search Product by Name (now searches by Item name)
-  async searchByName(prefix: string) {
+  async searchByName(prefix: string, onlyAvailable = false) {
     const low = prefix.toLowerCase();
     // Search by both Item and nameLower for backwards compatibility
+    const constraints: any[] = [];
+    if (onlyAvailable) {
+      constraints.push(where('Status', '==', 'Available'));
+    }
+
     const byItem = query(collection(this.db, 'products'), 
+      ...constraints,
       orderBy('Item'), startAt(prefix), endAt(prefix + '\uf8ff'));
     const byName = query(collection(this.db, 'products'), 
+      ...constraints,
       orderBy('nameLower'), startAt(low), endAt(low + '\uf8ff'));
     
     const [snapItem, snapName] = await Promise.all([
@@ -143,9 +157,13 @@ export class ProductsService {
   }
 
   // Search Product by Keyword
-  async searchByKeyword(token: string) {
+  async searchByKeyword(token: string, onlyAvailable = false) {
     const t = token.toLowerCase();
-    const q = query(collection(this.db, 'products'), where('keywords', 'array-contains', t));
+    const constraints: any[] = [where('keywords', 'array-contains', t)];
+    if (onlyAvailable) {
+      constraints.push(where('Status', '==', 'Available'));
+    }
+    const q = query(collection(this.db, 'products'), ...constraints);
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
   }

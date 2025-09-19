@@ -20,8 +20,8 @@ export class NotificationService {
       icon: 'error',
       title,
       text: message,
-      timer: 2000,
-      showConfirmButton: false
+      //timer: 2000,
+      showConfirmButton: true
     });
   }
 }
