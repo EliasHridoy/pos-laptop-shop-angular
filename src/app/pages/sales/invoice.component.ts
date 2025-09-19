@@ -72,35 +72,35 @@ import { Invoice } from '../../models/invoice.model';
                 </td>
                 <td>{{item.serialNumber || (productDetails.get(item.productId)?.ProductID) || '-'}}</td>
                 <td>{{item.qty}}</td>
-                <td>৳{{item.sellPrice | number:'1.2-2'}}</td>
-                <td>৳{{(item.qty * item.sellPrice) | number:'1.2-2'}}</td>
+                <td>{{item.sellPrice | number:'1.2-2'}}</td>
+                <td>{{(item.qty * item.sellPrice) | number:'1.2-2'}}</td>
               </tr>
             </tbody>
             <tfoot>
               <tr>
                 <td colspan="4"></td>
                 <td>Subtotal:</td>
-                <td>৳{{invoice.subTotal | number:'1.2-2'}}</td>
+                <td>{{invoice.subTotal | number:'1.2-2'}}</td>
               </tr>
               <tr *ngIf="invoice.discount > 0">
                 <td colspan="4"></td>
                 <td>Discount:</td>
-                <td>৳{{invoice.discount | number:'1.2-2'}}</td>
+                <td>{{invoice.discount | number:'1.2-2'}}</td>
               </tr>
               <tr>
                 <td colspan="4"></td>
                 <td><strong>Total:</strong></td>
-                <td><strong>৳{{invoice.total | number:'1.2-2'}}</strong></td>
+                <td><strong>{{invoice.total | number:'1.2-2'}}</strong></td>
               </tr>
               <tr>
                 <td colspan="4"></td>
                 <td>Paid:</td>
-                <td>৳{{invoice.paid | number:'1.2-2'}}</td>
+                <td>{{invoice.paid | number:'1.2-2'}}</td>
               </tr>
               <tr *ngIf="invoice.total - invoice.paid > 0">
                 <td colspan="4"></td>
                 <td>Due:</td>
-                <td>৳{{invoice.total - invoice.paid | number:'1.2-2'}}</td>
+                <td>{{invoice.total - invoice.paid | number:'1.2-2'}}</td>
               </tr>
             </tfoot>
           </table>
@@ -308,7 +308,6 @@ export class InvoiceComponent implements OnInit {
   productDetails: Map<string, any> = new Map();
 
   async ngOnInit() {
-    // Get the invoice ID from route parameters
     const saleId = this.route.snapshot.paramMap.get('id');
     if (!saleId) {
       this.error = 'No invoice ID provided';
@@ -317,7 +316,6 @@ export class InvoiceComponent implements OnInit {
     }
 
     try {
-      // Fetch the invoice data from Firestore
       const invoiceRef = doc(this.firestore, 'sales', saleId);
       const invoiceSnap = await getDoc(invoiceRef);
 
@@ -327,13 +325,11 @@ export class InvoiceComponent implements OnInit {
         return;
       }
 
-      // Convert the Firestore document to our Invoice type
       this.invoice = {
         id: invoiceSnap.id,
         ...invoiceSnap.data()
       } as Invoice;
 
-      // Fetch product details for each item
       await Promise.all(this.invoice.items.map(async (item) => {
         try {
           const productRef = doc(this.firestore, 'products', item.productId);
@@ -346,7 +342,6 @@ export class InvoiceComponent implements OnInit {
         }
       }));
 
-      // Preload logo when component initializes
       try {
         this.logoBase64 = await this.getImageAsBase64('/assets/images/logo.png');
       } catch (error) {
@@ -360,70 +355,57 @@ export class InvoiceComponent implements OnInit {
     }
   }
 
-  // Helper method to convert image URL to base64
   private getImageAsBase64(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous'; // Handle CORS if needed
-
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-
         canvas.width = img.width;
         canvas.height = img.height;
-
         ctx?.drawImage(img, 0, 0);
-
         const dataURL = canvas.toDataURL('image/png');
         resolve(dataURL);
       };
-
       img.onerror = (error) => reject(error);
       img.src = url;
     });
   }
-  sale: any;
+
   downloadPDF() {
+    if (!this.invoice) {
+      console.error('Invoice data is not available.');
+      return;
+    }
+
     this.doc = new jsPDF();
     this.currentY = 20;
 
-    // Add header
     this.addCompanyHeader();
-
-    // Add customer info
     this.addCustomerInfo();
-
-    // Add items table with proper text wrapping
     this.addItemsTable();
-
-    // Add payment details
     this.addPaymentDetails();
-
-    // Add terms and conditions
     this.addTermsAndConditions();
 
-    // Save the PDF
-    this.doc.save(`Invoice-${this.sale.invoiceNo}.pdf`);
+    // Save the PDF with a dynamic filename
+    this.doc.save(`Invoice-${this.invoice.invoiceNo}.pdf`);
   }
 
   private addCompanyHeader() {
     const doc = this.doc;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Add logo if available
     if (this.logoBase64) {
       const imgWidth = 35;
       const imgHeight = 25;
       doc.addImage(this.logoBase64, 'PNG', 15, this.currentY, imgWidth, imgHeight);
     }
 
-    // Company name
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('LAPTOP CORE TECHNOLOGY', 50, this.currentY);
 
-    // Company details
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Shop: 708, Level: 7, F5 Square, Mirpur-10,', 50, this.currentY + 6);
@@ -431,41 +413,35 @@ export class InvoiceComponent implements OnInit {
     doc.text('Phone: +88 01830 583433', 50, this.currentY + 14);
     doc.text('       +88 01610 974372', 50, this.currentY + 18);
 
-    // Sales Receipt header on right
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     const receiptText = 'Sales Receipt';
     const receiptWidth = doc.getTextWidth(receiptText);
     doc.text(receiptText, pageWidth - receiptWidth - 15, this.currentY);
 
-    // Date and invoice number
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const dateText = `Date: ${new Date().toLocaleDateString('en-GB')}`;
-    const dateWidth = doc.getTextWidth(dateText);
-    doc.text(dateText, pageWidth - dateWidth - 15, this.currentY + 6);
-
-    const invoiceText = `Invoice: ${this.sale.invoiceNo}`;
-    const invoiceWidth = doc.getTextWidth(invoiceText);
-    doc.text(invoiceText, pageWidth - invoiceWidth - 15, this.currentY + 10);
+    const invoiceDate = this.invoice?.createdAt.toDate().toLocaleDateString('en-GB');
+    doc.text(`Date: ${invoiceDate}`, pageWidth - 15, this.currentY + 6, { align: 'right' });
+    doc.text(`Invoice: ${this.invoice?.invoiceNo}`, pageWidth - 15, this.currentY + 10, { align: 'right' });
 
     this.currentY += 35;
   }
 
   private addCustomerInfo() {
+    if (!this.invoice || !this.invoice.customer) return;
     const doc = this.doc;
-    const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Customer info table
     autoTable(doc, {
       startY: this.currentY,
       body: [
-        ['Name:', this.sale.customerName || '', 'Phone:', this.sale.customerPhone || ''],
-        ['Address:', this.sale.customerAddress || '', 'Email:', '']
+        ['Name:', this.invoice.customer.name, 'Phone:', this.invoice.customer.phone || 'N/A'],
+        ['Address:', this.invoice.customer.address || 'N/A', 'Email:', this.invoice.customer.email || 'N/A']
       ],
       styles: {
         fontSize: 9,
-        cellPadding: 3
+        cellPadding: 3,
+        fontStyle: 'normal'
       },
       columnStyles: {
         0: { cellWidth: 25, fontStyle: 'bold' },
@@ -481,59 +457,52 @@ export class InvoiceComponent implements OnInit {
   }
 
   private addItemsTable() {
+    if (!this.invoice) return;
     const doc = this.doc;
-
-    // Prepare table data
     const tableBody: any[][] = [];
 
-    this.sale.items.forEach((item: any, index: number) => {
+    this.invoice.items.forEach((item, index) => {
+      // Get product details to add to the description
+      const product = this.productDetails.get(item.productId);
+      let descriptionText = '';
+      if (product) {
+        if (product.Brand) descriptionText += `${product.Brand} `;
+        if (product.Model) descriptionText += `Model: ${product.Model}\n`;
+        if (product.Processor) descriptionText += `${product.Processor} ${product.Genaration || ''}\n`;
+        if (product.RAM || product.ROM) descriptionText += `${product.RAM || ''} ${product.ROM || ''}\n`;
+        if (product.Description) descriptionText += product.Description;
+      } else {
+        descriptionText = item.description || 'N/A';
+      }
+
       tableBody.push([
-        `${index + 1}. ${item.name}`,
-        item.serialNumber || 'PC1CWOKC',
-        item.description || 'Intel 5-8th gen, 16GB RAM, 256GB SSD',
+        `${index + 1}`,
+        item.name + (descriptionText ? `\n${descriptionText}` : ''),
+        item.serialNumber || (product?.ProductID || '-'),
         item.qty.toString(),
-        item.sellPrice.toFixed(2),
-        (item.qty * item.sellPrice).toFixed(2)
+        `${item.sellPrice.toFixed(2)}`,
+        `${(item.qty * item.sellPrice).toFixed(2)}`
       ]);
     });
 
-    // Add total row
-    const totalAmount = this.sale.items.reduce((sum: number, item: any) =>
-      sum + (item.qty * item.sellPrice), 0);
-
-    tableBody.push([
-      'TOTAL AMOUNT', '', '', '1', '', totalAmount.toFixed(2)
-    ]);
-
-    // Create table with proper text wrapping
     autoTable(doc, {
       startY: this.currentY,
-      head: [['Product Name', 'S/N', 'Description', 'Quantity', 'Unit Price\nBDT', 'Value\nBDT']],
+      head: [['#', 'Item', 'Serial No.', 'Qty', 'Price', 'Total']],
       body: tableBody,
-
-      // Key settings to prevent overlapping - Solution 1
       styles: {
-        overflow: 'linebreak',      // Enable text wrapping
-        cellWidth: 'wrap',          // Auto-adjust cell width
+        overflow: 'linebreak',
         fontSize: 8,
         cellPadding: 2,
-        valign: 'top'              // Align text to top of cell
+        valign: 'top'
       },
-
-      // Column-specific settings to control width and prevent overlap
       columnStyles: {
-        0: { cellWidth: 45 },       // Product Name - fixed width
-        1: { cellWidth: 20 },       // S/N - fixed width  
-        2: {
-          cellWidth: 55,            // Description - wider, allows wrapping
-          overflow: 'linebreak'     // Ensure wrapping for long descriptions
-        },
-        3: { cellWidth: 18, halign: 'center' }, // Quantity
-        4: { cellWidth: 22, halign: 'right' },  // Unit Price
-        5: { cellWidth: 25, halign: 'right' }   // Value
+        0: { cellWidth: 10 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 15, halign: 'center' },
+        4: { cellWidth: 25, halign: 'right' },
+        5: { cellWidth: 25, halign: 'right' }
       },
-
-      // Header styling
       headStyles: {
         fillColor: [240, 240, 240],
         textColor: [0, 0, 0],
@@ -542,77 +511,108 @@ export class InvoiceComponent implements OnInit {
         halign: 'center',
         valign: 'middle'
       },
-
-      // Alternating row colors for better readability
       alternateRowStyles: {
         fillColor: [250, 250, 250]
       },
-
-      // Table layout settings
       tableWidth: 'auto',
-      margin: { left: 15, right: 15 },
-
-      // Ensure table fits on page
-      pageBreak: 'auto',
-
-      // Custom styling for total row
-      didParseCell: (data) => {
-        // Make total row bold
-        if (data.section === 'body' && data.row.index === tableBody.length - 1) {
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fillColor = [230, 230, 230];
-        }
-      }
+      margin: { left: 15, right: 15 }
     });
 
     this.currentY = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  private addPaymentDetails() {
-    const doc = this.doc;
-    const totalAmount = this.sale.items.reduce((sum: number, item: any) =>
-      sum + (item.qty * item.sellPrice), 0);
+private addPaymentDetails() {
+  if (!this.invoice) return;
+  const doc = this.doc;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Start the tables at a specific Y position
+  const startYPosition = this.currentY;
 
-    // Amount in words
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Total Amount (In Words):', 15, this.currentY);
-    doc.text('Twenty eight thousand five hundred taka only', 15, this.currentY + 5);
-
-    this.currentY += 15;
-
-    // Payment details table
+  // Gift Items table
+  const giftItems = ['Backpack', 'Mouse', 'Charger'];
+  if (giftItems.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Gift Items:', 15, startYPosition);
+    
     autoTable(doc, {
-      startY: this.currentY,
-      body: [
-        ['Received By:', '', 'Advance:', `BDT ${this.sale.advance.toFixed(2)}`],
-        ['Bill Item:', '', 'Paid:', `BDT ${totalAmount.toFixed(2)}`],
-        ['1. Backpack', '1', 'Signature:', ''],
-        ['2. Adapter', '1', '', ''],
-        ['3. Adapter Cable', '1', '', '']
-      ],
+      startY: startYPosition + 5,
+      head: [['#', 'Item']],
+      body: giftItems.map((item, index) => [`${index + 1}.`, item]),
+      theme: 'grid',
       styles: {
-        fontSize: 8,
+        fontSize: 10,
         cellPadding: 2
       },
-      columnStyles: {
-        0: { cellWidth: 40, fontStyle: 'bold' },
-        1: { cellWidth: 15 },
-        2: { cellWidth: 30, fontStyle: 'bold' },
-        3: { cellWidth: 40 }
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold'
       },
-      theme: 'grid',
-      margin: { left: 15, right: 15 }
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 50, halign: 'left' }
+      },
+      margin: { left: 15 }
     });
-
-    this.currentY = (doc as any).lastAutoTable.finalY + 15;
   }
+
+  // Financial Summary table
+  autoTable(doc, {
+    startY: startYPosition, // Start at the same Y position as the Gift Items table
+    head: [['Summary', 'Amount']],
+    body: [
+      ['Subtotal:', `${this.invoice.subTotal.toFixed(2)}`],
+      ['Discount:', `${this.invoice.discount.toFixed(2)}`],
+      ['Total:', `${this.invoice.total.toFixed(2)}`],
+      ['Paid:', `${this.invoice.paid.toFixed(2)}`],
+      ['Due:', `${(this.invoice.total - this.invoice.paid).toFixed(2)}`]
+    ],
+    theme: 'grid',
+    styles: {
+      fontSize: 10,
+      cellPadding: 2,
+    },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold'
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', halign: 'left' },
+      1: { halign: 'right' }
+    },
+    margin: { left: pageWidth - 85, right: 15 }, // Adjust left margin for side-by-side placement
+    didParseCell: (data) => {
+      if (data.row.index === 2) { // Total row
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 12;
+      }
+    }
+  });
+
+  // Find the end Y position of the longer table
+  const endYOfGiftTable = giftItems.length > 0 ? (doc as any).lastAutoTable.finalY : startYPosition;
+  const endYOfPaymentTable = (doc as any).lastAutoTable.finalY;
+  this.currentY = Math.max(endYOfGiftTable, endYOfPaymentTable) + 15;
+
+  // Add signature lines
+  doc.line(15, this.currentY, 65, this.currentY); // Customer Signature line
+  doc.text('Customer Signature', 15, this.currentY + 5);
+  
+  doc.line(145, this.currentY, 195, this.currentY); // Seller Signature line
+  doc.text('Authorized Signature', 145, this.currentY + 5);
+
+  this.currentY += 15;
+}
 
   private addTermsAndConditions() {
     const doc = this.doc;
 
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Terms & Conditions:', 15, this.currentY);
 
     const terms = [
       '1. This Product is deemed Dead-On-Arrival (DOA) if it is defective upon receipt. This Product has to be returned to the place of purchase within',
@@ -625,10 +625,12 @@ export class InvoiceComponent implements OnInit {
       'held responsible for any data loss/damage during service. Please avoid shock, liquid damage (Water, soft Drink, Coffee, but not limited to).'
     ];
 
-    let currentY = this.currentY;
+    let yPosition = this.currentY + 5;
+    doc.setFont('helvetica', 'normal');
     terms.forEach(term => {
-      doc.text(term, 15, currentY);
-      currentY += 3;
+      const splitText = doc.splitTextToSize(term, doc.internal.pageSize.getWidth() - 30);
+      doc.text(splitText, 15, yPosition);
+      yPosition += doc.getTextDimensions(splitText).h + 2;
     });
   }
 }
