@@ -53,7 +53,7 @@ export class SalesService {
 
         productReads.forEach(({ ref, data, qty, sellPrice }) => {
           const finalSellPrice = sellPrice ?? data.defaultSellPrice;
-          const costPrice = Number(data.costPrice || 0);
+          const costPrice = Number(data.CostPrice || 0);
 
           // Prepare line item
           lineItems.push({
