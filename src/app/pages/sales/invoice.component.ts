@@ -343,7 +343,7 @@ export class InvoiceComponent implements OnInit {
       }));
 
       try {
-        this.logoBase64 = await this.getImageAsBase64('/assets/images/logo.png');
+        this.logoBase64 = await this.getImageAsBase64('/assets/images/LCT.png');
       } catch (error) {
         console.error('Logo preload failed:', error);
       }
