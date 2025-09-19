@@ -384,8 +384,8 @@ export class InvoiceComponent implements OnInit {
 
     this.addCompanyHeader();
     this.addCustomerInfo();
-    this.addItemsTable();
-    this.addPaymentDetails();
+    this.addItemsAndFinancialSummaryTable();
+    this.addGiftItemsAndSignatures();
     this.addTermsAndConditions();
 
     // Save the PDF with a dynamic filename
@@ -456,13 +456,13 @@ export class InvoiceComponent implements OnInit {
     this.currentY = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  private addItemsTable() {
+private addItemsAndFinancialSummaryTable() {
     if (!this.invoice) return;
     const doc = this.doc;
     const tableBody: any[][] = [];
 
+    // Add invoice items
     this.invoice.items.forEach((item, index) => {
-      // Get product details to add to the description
       const product = this.productDetails.get(item.productId);
       let descriptionText = '';
       if (product) {
@@ -485,6 +485,34 @@ export class InvoiceComponent implements OnInit {
       ]);
     });
 
+    // Add financial summary rows using a single cell with colSpan for labels
+    const summaryColSpan = 5;
+    tableBody.push([
+      { content: 'Subtotal:', colSpan: summaryColSpan, styles: { fontStyle: 'bold', halign: 'right' } },
+      `${this.invoice.subTotal.toFixed(2)}`
+    ]);
+    if (this.invoice.discount > 0) {
+      tableBody.push([
+        { content: 'Discount:', colSpan: summaryColSpan, styles: { fontStyle: 'bold', halign: 'right' } },
+        `${this.invoice.discount.toFixed(2)}`
+      ]);
+    }
+    tableBody.push([
+      { content: 'Total:', colSpan: summaryColSpan, styles: { fontStyle: 'bold', halign: 'right', fontSize: 12 } },
+      { content: `${this.invoice.total.toFixed(2)}`, styles: { fontStyle: 'bold', halign: 'right', fontSize: 12 } }
+    ]);
+    tableBody.push([
+      { content: 'Paid:', colSpan: summaryColSpan, styles: { fontStyle: 'bold', halign: 'right' } },
+      `${this.invoice.paid.toFixed(2)}`
+    ]);
+    if (this.invoice.total - this.invoice.paid > 0) {
+      tableBody.push([
+        { content: 'Due:', colSpan: summaryColSpan, styles: { fontStyle: 'bold', halign: 'right' } },
+        `${(this.invoice.total - this.invoice.paid).toFixed(2)}`
+      ]);
+    }
+    
+    // AutoTable call remains the same
     autoTable(doc, {
       startY: this.currentY,
       head: [['#', 'Item', 'Serial No.', 'Qty', 'Price', 'Total']],
@@ -521,91 +549,49 @@ export class InvoiceComponent implements OnInit {
     this.currentY = (doc as any).lastAutoTable.finalY + 10;
   }
 
-private addPaymentDetails() {
-  if (!this.invoice) return;
-  const doc = this.doc;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Start the tables at a specific Y position
-  const startYPosition = this.currentY;
+  private addGiftItemsAndSignatures() {
+    const doc = this.doc;
+    const giftItems = ['Backpack', 'Mouse', 'Charger'];
 
-  // Gift Items table
-  const giftItems = ['Backpack', 'Mouse', 'Charger'];
-  if (giftItems.length > 0) {
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Gift Items:', 15, startYPosition);
-    
-    autoTable(doc, {
-      startY: startYPosition + 5,
-      head: [['#', 'Item']],
-      body: giftItems.map((item, index) => [`${index + 1}.`, item]),
-      theme: 'grid',
-      styles: {
-        fontSize: 10,
-        cellPadding: 2
-      },
-      headStyles: {
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: 'bold'
-      },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 50, halign: 'left' }
-      },
-      margin: { left: 15 }
-    });
-  }
-
-  // Financial Summary table
-  autoTable(doc, {
-    startY: startYPosition, // Start at the same Y position as the Gift Items table
-    head: [['Summary', 'Amount']],
-    body: [
-      ['Subtotal:', `${this.invoice.subTotal.toFixed(2)}`],
-      ['Discount:', `${this.invoice.discount.toFixed(2)}`],
-      ['Total:', `${this.invoice.total.toFixed(2)}`],
-      ['Paid:', `${this.invoice.paid.toFixed(2)}`],
-      ['Due:', `${(this.invoice.total - this.invoice.paid).toFixed(2)}`]
-    ],
-    theme: 'grid',
-    styles: {
-      fontSize: 10,
-      cellPadding: 2,
-    },
-    headStyles: {
-      fillColor: [240, 240, 240],
-      textColor: [0, 0, 0],
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', halign: 'left' },
-      1: { halign: 'right' }
-    },
-    margin: { left: pageWidth - 85, right: 15 }, // Adjust left margin for side-by-side placement
-    didParseCell: (data) => {
-      if (data.row.index === 2) { // Total row
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fontSize = 12;
-      }
+    if (giftItems.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Gift Items:', 15, this.currentY);
+      
+      autoTable(doc, {
+        startY: this.currentY + 5,
+        head: [['#', 'Item']],
+        body: giftItems.map((item, index) => [`${index + 1}.`, item]),
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 2
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold'
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 50, halign: 'left' }
+        },
+        margin: { left: 15 }
+      });
+      this.currentY = (doc as any).lastAutoTable.finalY + 15;
+    } else {
+      this.currentY += 15;
     }
-  });
-
-  // Find the end Y position of the longer table
-  const endYOfGiftTable = giftItems.length > 0 ? (doc as any).lastAutoTable.finalY : startYPosition;
-  const endYOfPaymentTable = (doc as any).lastAutoTable.finalY;
-  this.currentY = Math.max(endYOfGiftTable, endYOfPaymentTable) + 15;
-
-  // Add signature lines
-  doc.line(15, this.currentY, 65, this.currentY); // Customer Signature line
-  doc.text('Customer Signature', 15, this.currentY + 5);
   
-  doc.line(145, this.currentY, 195, this.currentY); // Seller Signature line
-  doc.text('Authorized Signature', 145, this.currentY + 5);
+    // Add signature lines
+    doc.line(15, this.currentY, 65, this.currentY); // Customer Signature line
+    doc.text('Customer Signature', 15, this.currentY + 5);
+    
+    doc.line(145, this.currentY, 195, this.currentY); // Seller Signature line
+    doc.text('Authorized Signature', 145, this.currentY + 5);
 
-  this.currentY += 15;
-}
+    this.currentY += 15;
+  }
 
   private addTermsAndConditions() {
     const doc = this.doc;
