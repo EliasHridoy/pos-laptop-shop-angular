@@ -4,6 +4,9 @@ import { NgFor, NgIf } from '@angular/common';
 import { ProductsService } from '../../services/products.service';
 import { CatalogService } from '../../services/catalog.service';
 import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
+import { UploadExcelService, SheetJson } from '../../services/upload-excel.service';
+
+
 
 @Component({
   selector: 'app-products',
@@ -14,6 +17,26 @@ import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
     <div class="grid two">
       <div class="card">
         <h3>{{editingId ? 'Edit Product' : 'Add Product'}}</h3>
+        <input type="file" accept=".xlsx,.xls" (change)="onFile($event)" />
+        
+        <!-- Excel Preview Table -->
+        <div *ngIf="previewData" class="excel-preview" style="margin: 1rem 0;">
+          <h4>Excel Preview (First 100 rows)</h4>
+          <div class="table-responsive" style="width: 100%; overflow-x: auto; max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+            <table class="table" style="margin-bottom: 0;">
+              <thead>
+                <tr>
+                  <th *ngFor="let header of previewData.headers" style="white-space: nowrap; padding: 8px; background: #f5f5f5; position: sticky; top: 0;">{{header}}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of previewData.rows">
+                  <td *ngFor="let header of previewData.headers" style="white-space: nowrap; padding: 8px;">{{row[header]}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <form (submit)="save()">
           <div class="form-group">
             <label>Name</label>
@@ -118,6 +141,16 @@ export class ProductsComponent implements OnInit {
   itemsPerPage = 5; // You can adjust how many items per page
   totalItems = 0;
 
+  data: SheetJson[] | null = null;
+  previewData: { headers: (keyof Stock)[]; rows: Stock[] } | null = null;
+  readonly stockHeaders: (keyof Stock)[] = [
+    'No', 'Date', 'Item', 'Brand', 'Series', 'Model', 'Processor', 
+    'Genaration', 'RAM', 'ROM', 'ProductID', 'CostPrice', 'AskingPrice', 
+    'Revenue', 'NetRevenue', 'SockOutDate', 'SaleInvoiceNo', 'Status', 'FeedBack'
+  ];
+
+  constructor(private excel: UploadExcelService) {}
+
   async ngOnInit() {
     this.categories = await this.catalog.listCategories(null);
     this.totalItems = await this.search();
@@ -174,4 +207,77 @@ export class ProductsComponent implements OnInit {
   pageChanged(page: number) {
     this.currentPage = page;
   }
+
+async onFile(evt: Event) {
+  const input = evt.target as HTMLInputElement | null;
+  const file = input?.files?.item(0);
+  if (!file) return;
+  
+  const data = await this.excel.readFileToJson(file);
+  this.data = data;
+
+  if (data.length > 0) {
+    const firstSheet = data[0];
+    // Map the raw data to Stock interface
+    const excelHeaders = Object.keys(firstSheet.rows[0] || {});
+    console.log('Excel Headers:', excelHeaders);
+
+    const rows = firstSheet.rows
+      .slice(0, 100) // Take only first 100 rows
+      .map(row => {
+        const stock: Stock = {
+          No: Number(row[excelHeaders[0]]) || undefined,
+          Date: row[excelHeaders[1]]?.toString(),
+          Item: row[excelHeaders[2]]?.toString(),
+          Brand: row[excelHeaders[3]]?.toString(),
+          Series: row[excelHeaders[4]]?.toString(),
+          Model: row[excelHeaders[5]]?.toString(),
+          Processor: row[excelHeaders[6]]?.toString(),
+          Genaration: row[excelHeaders[7]]?.toString(),
+          RAM: row[excelHeaders[8]]?.toString(),
+          ROM: row[excelHeaders[9]]?.toString(),
+          ProductID: row[excelHeaders[10]]?.toString(),
+          CostPrice: Number(row[excelHeaders[11]]) || undefined,
+          AskingPrice: Number(row[excelHeaders[12]]) || undefined,
+          Revenue: Number(row[excelHeaders[13]]) || undefined,
+          NetRevenue: Number(row[excelHeaders[14]]) || undefined,
+          SockOutDate: row[excelHeaders[15]]?.toString(),
+          SaleInvoiceNo: row[excelHeaders[16]]?.toString(),
+          Status: row[excelHeaders[17]]?.toString(),
+          FeedBack: row[excelHeaders[18]]?.toString()
+        };
+        return stock;
+      });
+
+    console.log('Mapped Stock Rows:', rows);
+
+    this.previewData = {
+      headers: this.stockHeaders,
+      rows
+    };
+  }
+}
+}
+
+
+export interface Stock {
+  No?: number;
+  Date?: string;
+  Item?: string;
+  Brand?: string;
+  Series?: string;
+  Model?: string;
+  Processor?: string;
+  Genaration?: string;
+  RAM?: string;
+  ROM?: string;
+  ProductID?: string;
+  CostPrice?: number;
+  AskingPrice?: number;
+  Revenue?: number;
+  NetRevenue?: number;
+  SockOutDate?: string;
+  SaleInvoiceNo?: string;
+  Status?: string;
+  FeedBack?: string;
 }
