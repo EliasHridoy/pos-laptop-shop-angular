@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { ProductsService } from '../../services/products.service';
 import { CatalogService } from '../../services/catalog.service';
 import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
@@ -11,103 +11,132 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [FormsModule, NgFor, NgIf, NgxPaginationModule],
+  imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule],
   template: `
     <h2>Products</h2>
-    <div class="grid two">
-      <div class="card">
-        <h3>{{editingId ? 'Edit Product' : 'Add Product'}}</h3>
-        <input type="file" accept=".xlsx,.xls" (change)="onFile($event)" />
+    <div class="grid">
+      <!-- Product Details View -->
+      <div class="card" *ngIf="showDetails">
+        <div class="header-actions">
+          <h3>Product Details</h3>
+          <button class="btn secondary" (click)="closeDetails()">Close</button>
+        </div>
         
-        <!-- Excel Preview Table -->
-        <div *ngIf="previewData" class="excel-preview" style="margin: 1rem 0;">
-          <h4>Excel Preview (First 100 rows)</h4>
-          <div class="table-responsive" style="width: 100%; overflow-x: auto; max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
-            <table class="table" style="margin-bottom: 0;">
-              <thead>
-                <tr>
-                  <th *ngFor="let header of previewData.headers" style="white-space: nowrap; padding: 8px; background: #f5f5f5; position: sticky; top: 0;">{{header}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let row of previewData.rows">
-                  <td *ngFor="let header of previewData.headers" style="white-space: nowrap; padding: 8px;">{{row[header]}}</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="details-container" *ngIf="selectedProduct">
+          <!-- Basic Information -->
+          <div class="form-section">
+            <h4>Basic Information</h4>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Date Added:</label>
+                <span>{{selectedProduct.Date | date}}</span>
+              </div>
+              <div class="detail-item">
+                <label>Item:</label>
+                <span>{{selectedProduct.Item}}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Information -->
+          <div class="form-section">
+            <h4>Category Details</h4>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Brand:</label>
+                <span>{{selectedProduct.Brand}}</span>
+              </div>
+              <div class="detail-item">
+                <label>Series:</label>
+                <span>{{selectedProduct.Series}}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Specifications -->
+          <div class="form-section">
+            <h4>Specifications</h4>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Model:</label>
+                <span>{{selectedProduct.Model}}</span>
+              </div>
+              <div class="detail-item">
+                <label>Processor:</label>
+                <span>{{selectedProduct.Processor}}</span>
+              </div>
+            </div>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Generation:</label>
+                <span>{{selectedProduct.Genaration}}</span>
+              </div>
+              <div class="detail-item">
+                <label>RAM:</label>
+                <span>{{selectedProduct.RAM}}</span>
+              </div>
+              <div class="detail-item">
+                <label>ROM:</label>
+                <span>{{selectedProduct.ROM}}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stock Details -->
+          <div class="form-section">
+            <h4>Stock Details</h4>
+            <div class="details-row">
+              <div class="detail-item">
+                <label>Stock Quantity:</label>
+                <span>{{selectedProduct.stockQty}}</span>
+              </div>
+              <div class="detail-item">
+                <label>Cost Price:</label>
+                <span>৳{{selectedProduct.CostPrice}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-actions">
+            <button class="btn" (click)="edit(selectedProduct)">Edit</button>
+            <button class="btn danger" (click)="remove(selectedProduct.id)">Delete</button>
           </div>
         </div>
-        <form (submit)="save()">
-          <div class="form-group">
-            <label>Name</label>
-            <input class="input" [(ngModel)]="form.name" name="name" required />
-          </div>
-          <div class="form-group">
-            <label>SKU</label>
-            <input class="input" [(ngModel)]="form.sku" name="sku" required />
-          </div>
-          <div class="form-group">
-            <label>Brand</label>
-            <input class="input" [(ngModel)]="form.brand" name="brand" required />
-          </div>
-          <div class="form-group">
-            <label>Category</label>
-            <select class="input" [(ngModel)]="form.categoryId" name="categoryId" (change)="loadSubs()" required>
-              <option value="">Select Category</option>
-              <option *ngFor="let cat of categories" [value]="cat.id">{{cat.name}}</option>
-            </select>
-          </div>
-          <div class="form-group" *ngIf="form.categoryId">
-            <label>Subcategory</label>
-            <select class="input" [(ngModel)]="form.subcategoryId" name="subcategoryId" required>
-              <option value="">Select Subcategory</option>
-              <option *ngFor="let sub of subcategories" [value]="sub.id">{{sub.name}}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Cost Price</label>
-            <input type="number" class="input" [(ngModel)]="form.costPrice" name="costPrice" required />
-          </div>
-          <div class="form-group">
-            <label>Selling Price</label>
-            <input type="number" class="input" [(ngModel)]="form.defaultSellPrice" name="defaultSellPrice" required />
-          </div>
-          <div class="form-group">
-            <label>Stock Quantity</label>
-            <input type="number" class="input" [(ngModel)]="form.stockQty" name="stockQty" required />
-          </div>
-          <div class="form-group">
-            <label>Details</label>
-            <textarea class="input" [(ngModel)]="form.details" name="details" rows="3"></textarea>
-          </div>
-          <div class="form-group">
-            <button type="submit" class="btn primary">{{editingId ? 'Update' : 'Save'}}</button>
-            <button type="button" class="btn secondary" *ngIf="editingId" (click)="cancelEdit()">Cancel</button>
-          </div>
-        </form>
       </div>
 
-      <!-- Product Grid with Pagination -->
-      <div class="card">
-        <h3>Products</h3>
-        <input class="input" placeholder="Search by name/keyword" [(ngModel)]="q" (keyup.enter)="search()" />
+      <!-- Product Grid -->
+      <div class="card" *ngIf="!showForm && !showDetails">
+        <div class="header-actions">
+          <h3>Products</h3>
+          <button class="btn primary" (click)="showForm = true">Add Product</button>
+        </div>
+        
+        <input class="input" placeholder="Search by name/keyword" [(ngModel)]="q" (change)="search()" />
         <button class="btn secondary" (click)="search()">Search</button>
 
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th><th>Brand</th><th>SKU</th><th>Stock</th><th>Price</th><th></th>
+              <th>Item</th>
+              <th>Brand</th>
+              <th>Series</th>
+              <th>Model</th>
+              <th>Stock</th>
+              <th>Cost Price</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let p of items | paginate: { itemsPerPage: itemsPerPage, currentPage: currentPage, totalItems: totalItems }">
-              <td>{{p.name}}</td>
-              <td>{{p.brand}}</td>
-              <td>{{p.sku}}</td>
+              <td>{{p.Item}}</td>
+              <td>{{p.Brand}}</td>
+              <td>{{p.Series}}</td>
+              <td>{{p.Model}}</td>
               <td>{{p.stockQty}}</td>
-              <td>৳{{p.defaultSellPrice}}</td>
-              <td>
-                <button class="btn small" (click)="edit(p)"> Edit </button>
+              <td>৳{{p.CostPrice}}</td>
+              <td class="actions">
+                <button class="btn small info" (click)="viewDetails(p)">View</button>
+                <button class="btn small" (click)="edit(p)">Edit</button>
                 <button class="btn small danger" (click)="remove(p.id)">Delete</button>
               </td>
             </tr>
@@ -115,20 +144,273 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
         </table>
 
         <!-- Pagination -->
-        <pagination-controls
-          (pageChange)="pageChanged($event)">
-        </pagination-controls>
-
+        <div class="pagination-container">
+          <div class="page-size-selector">
+            <label>Items per page:</label>
+            <select class="input" [(ngModel)]="itemsPerPage" (change)="onPageSizeChange()">
+              <option *ngFor="let size of pageSizes" [value]="size">{{size}}</option>
+            </select>
+          </div>
+          <pagination-controls (pageChange)="pageChanged($event)"></pagination-controls>
+        </div>
       </div>
+
+      <!-- Stock In Form -->
+      <div class="card" *ngIf="showForm">
+        <div class="header-actions">
+          <h3>{{editingId ? 'Edit Product' : 'Stock In Form'}}</h3>
+          <button class="btn secondary" (click)="showForm = false">Close</button>
+        </div>
+
+        <input type="file" accept=".xlsx,.xls" (change)="onFile($event)" />
+        
+        <!-- Excel Preview Table -->
+        <div *ngIf="previewData" class="excel-preview" style="margin: 1rem 0;">
+          <h4>Excel Preview (First 100 rows)</h4>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th *ngFor="let header of previewData.headers">{{header}}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of previewData.rows">
+                  <td *ngFor="let header of previewData.headers">{{row[header]}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <form (submit)="save()" class="stock-in-form">
+          <!-- Basic Information -->
+          <div class="form-section">
+            <h4>Basic Information</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Date</label>
+                <input type="date" class="input" [(ngModel)]="form.Date" name="date" required />
+              </div>
+              <div class="form-group">
+                <label>Item</label>
+                <input class="input" [(ngModel)]="form.Item" value="Laptop" name="item" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Information -->
+          <div class="form-section">
+            <h4>Category Details</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Brand (Category)</label>
+                <select class="input" [(ngModel)]="form.categoryId" name="categoryId" (change)="loadSubs()" required>
+                  <option value="">Select Brand</option>
+                  <option *ngFor="let cat of categories" [value]="cat.id">{{cat.name}}</option>
+                </select>
+              </div>
+              <div class="form-group" *ngIf="form.categoryId">
+                <label>Series (Subcategory)</label>
+                <select class="input" [(ngModel)]="form.subcategoryId" name="subcategoryId" (change)="onSubcategoryChange()" required>
+                  <option value="">Select Series</option>
+                  <option *ngFor="let sub of subcategories" [value]="sub.id">{{sub.name}}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Specifications -->
+          <div class="form-section">
+            <h4>Specifications</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Model</label>
+                <input class="input" [(ngModel)]="form.Model" name="model" required />
+              </div>
+              <div class="form-group">
+                <label>Processor</label>
+                <input class="input" [(ngModel)]="form.Processor" name="processor" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Generation</label>
+                <input class="input" [(ngModel)]="form.Genaration" name="generation" required />
+              </div>
+              <div class="form-group">
+                <label>RAM</label>
+                <input class="input" [(ngModel)]="form.RAM" name="ram" required />
+              </div>
+              <div class="form-group">
+                <label>ROM</label>
+                <input class="input" [(ngModel)]="form.ROM" name="rom" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Stock Details -->
+          <div class="form-section">
+            <h4>Stock Details</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Stock Quantity</label>
+                <input type="number" class="input" [(ngModel)]="form.stockQty" name="stockQty" required />
+              </div>
+              <div class="form-group">
+                <label>Cost Price</label>
+                <input type="number" class="input" [(ngModel)]="form.CostPrice" name="costPrice" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">{{editingId ? 'Update' : 'Save'}}</button>
+            <button type="button" class="btn secondary" *ngIf="editingId" (click)="cancelEdit()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
     </div>
-  `
+  `,
+  styles: [`
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .details-container {
+      padding: 1rem;
+    }
+
+    .details-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .detail-item label {
+      font-weight: bold;
+      color: #666;
+    }
+
+    .detail-item span {
+      color: #333;
+    }
+
+    .details-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .stock-in-form {
+      max-width: 100%;
+      padding: 1rem;
+    }
+
+    .form-section {
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-section h4 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .pagination-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+    }
+
+    .page-size-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .page-size-selector select {
+      width: auto;
+      min-width: 80px;
+    }
+
+    .page-size-selector label {
+      color: #666;
+      font-size: 0.9rem;
+    }
+  `]
 })
 export class ProductsComponent implements OnInit {
   // Component logic
   private svc = inject(ProductsService);
   private catalog = inject(CatalogService);
 
-  form: any = { name: '', sku: '', brand: '', costPrice: 0, defaultSellPrice: 0, stockQty: 0, details: '', categoryId: null, subcategoryId: null };
+  form: StockInModel = {
+    No: undefined,
+    Date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD format for input[type="date"]
+    Item: 'Laptop',
+    Brand: '',
+    categoryId: '',
+    Series: '',
+    subcategoryId: '',
+    Model: '',
+    Processor: '',
+    Genaration: '',
+    RAM: '',
+    ROM: '',
+    stockQty: 0,
+    CostPrice: 0
+  };
+  showForm = false;
+  showDetails = false;
+  selectedProduct: any = null;
   editingId: string | null = null;
   q = '';
   items: any[] = [];
@@ -138,12 +420,15 @@ export class ProductsComponent implements OnInit {
 
   // Pagination variables
   currentPage = 1;
-  itemsPerPage = 5; // You can adjust how many items per page
+  itemsPerPage = 10; // Default to 10 items per page
   totalItems = 0;
+  
+  // Available page sizes
+  readonly pageSizes = [10, 50, 100, 500];
 
   data: SheetJson[] | null = null;
-  previewData: { headers: (keyof Stock)[]; rows: Stock[] } | null = null;
-  readonly stockHeaders: (keyof Stock)[] = [
+  previewData: { headers: (keyof ExcelData)[]; rows: ExcelData[] } | null = null;
+  readonly stockHeaders: (keyof ExcelData)[] = [
     'No', 'Date', 'Item', 'Brand', 'Series', 'Model', 'Processor', 
     'Genaration', 'RAM', 'ROM', 'ProductID', 'CostPrice', 'AskingPrice', 
     'Revenue', 'NetRevenue', 'SockOutDate', 'SaleInvoiceNo', 'Status', 'FeedBack'
@@ -157,22 +442,65 @@ export class ProductsComponent implements OnInit {
   }
 
   async loadSubs() {
-    this.subcategories = this.form.categoryId ? await this.catalog.listCategories(this.form.categoryId) : [];
-    this.form.subcategoryId = null;
+    if (!this.form.categoryId) {
+      this.subcategories = [];
+      this.form.subcategoryId = '';
+      this.form.Series = '';
+      return;
+    }
+
+    // Find selected category to get its name
+    const selectedCategory = this.categories.find(cat => cat.id === this.form.categoryId);
+    if (selectedCategory) {
+      this.form.Brand = selectedCategory.name; // Set the Brand name
+    }
+
+    this.subcategories = await this.catalog.listCategories(this.form.categoryId);
+    this.form.subcategoryId = '';
+    this.form.Series = ''; // Reset series when category changes
+  }
+
+  // Handle subcategory selection
+  onSubcategoryChange() {
+    const selectedSubcategory = this.subcategories.find(sub => sub.id === this.form.subcategoryId);
+    if (selectedSubcategory) {
+      this.form.Series = selectedSubcategory.name; // Set the Series name
+    }
   }
 
   async save() {
-    if (!this.form.name) return;
+    if (!this.form.Item) return;
+
+    // Prepare the product data
+    const productData = {
+      ...this.form,
+      name: this.form.Item, // For backwards compatibility and search
+      nameLower: this.form.Item.toLowerCase(),
+      details: `${this.form.Processor || ''} ${this.form.Genaration || ''} ${this.form.RAM || ''} ${this.form.ROM || ''}`.trim(),
+      keywords: [
+        this.form.Item,
+        this.form.Brand,
+        this.form.Series,
+        this.form.Model,
+        this.form.Processor,
+        this.form.Genaration,
+        this.form.RAM,
+        this.form.ROM
+      ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase())
+    };
+
     if (this.editingId) {
-      await this.svc.updateProduct(this.editingId, this.form);
+      await this.svc.updateProduct(this.editingId, productData);
     } else {
-      await this.svc.createProduct(this.form);
+      await this.svc.createProduct(productData);
     }
     this.resetForm();
     this.totalItems = await this.search(); // Re-fetch with pagination
   }
 
   edit(p: any) {
+    this.showForm = true;
+    this.showDetails = false;
     this.editingId = p.id;
     this.form = { ...p };
   }
@@ -187,8 +515,34 @@ export class ProductsComponent implements OnInit {
   }
 
   resetForm() {
-    this.form = { name: '', sku: '', brand: '', costPrice: 0, defaultSellPrice: 0, stockQty: 0, details: '', categoryId: null, subcategoryId: null };
+    this.form = {
+      No: undefined,
+      Date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD format for input[type="date"]
+      Item: 'Laptop',
+      Brand: '',
+      categoryId: '',
+      Series: '',
+      subcategoryId: '',
+      Model: '',
+      Processor: '',
+      Genaration: '',
+      RAM: '',
+      ROM: '',
+      stockQty: 0,
+      CostPrice: 0
+    };
     this.editingId = null;
+    this.showForm = false;
+  }
+
+  viewDetails(product: any) {
+    this.selectedProduct = product;
+    this.showDetails = true;
+  }
+
+  closeDetails() {
+    this.selectedProduct = null;
+    this.showDetails = false;
   }
 
   async search() {
@@ -208,6 +562,10 @@ export class ProductsComponent implements OnInit {
     this.currentPage = page;
   }
 
+  onPageSizeChange() {
+    this.currentPage = 1; // Reset to first page when changing page size
+  }
+
 async onFile(evt: Event) {
   const input = evt.target as HTMLInputElement | null;
   const file = input?.files?.item(0);
@@ -225,7 +583,7 @@ async onFile(evt: Event) {
     const rows = firstSheet.rows
       .slice(0, 100) // Take only first 100 rows
       .map(row => {
-        const stock: Stock = {
+        const stock: ExcelData = {
           No: Number(row[excelHeaders[0]]) || undefined,
           Date: row[excelHeaders[1]]?.toString(),
           Item: row[excelHeaders[2]]?.toString(),
@@ -260,7 +618,7 @@ async onFile(evt: Event) {
 }
 
 
-export interface Stock {
+export interface ExcelData {
   No?: number;
   Date?: string;
   Item?: string;
@@ -280,4 +638,21 @@ export interface Stock {
   SaleInvoiceNo?: string;
   Status?: string;
   FeedBack?: string;
+}
+
+export interface StockInModel {
+  No?: number;
+  Date?: string;
+  Item?: string;
+  categoryId?: string; // Display name Brand
+  Brand?: string; // category name
+  subcategoryId?: string;  // Display name Series
+  Series?: string; // subcategory name
+  Model?: string;
+  Processor?: string;
+  Genaration?: string;
+  RAM?: string;
+  ROM?: string;
+  stockQty?: number;
+  CostPrice?: number;
 }

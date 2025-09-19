@@ -12,17 +12,43 @@ export class ProductsService {
   async createProduct(p: any) {
     try {
       const ref = await addDoc(collection(this.db, 'products'), {
-        sku: p.sku || '',
-        name: p.name,
-        nameLower: p.name.toLowerCase(),
-        brand: p.brand || '',
-        categoryId: p.categoryId || null,
-        subcategoryId: p.subcategoryId || null,
-        costPrice: Number(p.costPrice || 0),
-        defaultSellPrice: Number(p.defaultSellPrice || 0),
+        // Basic Information
+        Date: p.Date || new Date(),
+        Item: p.Item || '',
+        name: p.Item || '', // For backward compatibility
+        nameLower: (p.Item || '').toLowerCase(),
+        
+        // Category Information
+        Brand: p.Brand || '',
+        categoryId: p.categoryId || '',
+        Series: p.Series || '',
+        subcategoryId: p.subcategoryId || '',
+        
+        // Specifications
+        Model: p.Model || '',
+        Processor: p.Processor || '',
+        Genaration: p.Genaration || '',
+        RAM: p.RAM || '',
+        ROM: p.ROM || '',
+        
+        // Stock Details
         stockQty: Number(p.stockQty || 0),
-        details: p.details || '',
-        keywords: (p.name + ' ' + (p.details || '')).toLowerCase().split(/\s+/).filter(Boolean),
+        CostPrice: Number(p.CostPrice || 0),
+        
+        // Generated Fields
+        details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
+        keywords: [
+          p.Item,
+          ...(p.Brand ? p.Brand.split(' ') : []),
+          p.Series,
+          p.Model,
+          p.Processor,
+          p.Genaration,
+          p.RAM,
+          p.ROM
+        ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
+        
+        // Metadata
         createdAt: serverTimestamp()
       });
       this.notification.success('Product added!');
@@ -37,17 +63,41 @@ export class ProductsService {
     try {
       const ref = doc(this.db, 'products', id);
       await updateDoc(ref, {
-        sku: p.sku || '',
-        name: p.name,
-        nameLower: p.name.toLowerCase(),
-        brand: p.brand || '',
-        categoryId: p.categoryId || null,
-        subcategoryId: p.subcategoryId || null,
-        costPrice: Number(p.costPrice || 0),
-        defaultSellPrice: Number(p.defaultSellPrice || 0),
+        // Basic Information
+        Date: p.Date || new Date(),
+        Item: p.Item || '',
+        name: p.Item || '', // For backward compatibility
+        nameLower: (p.Item || '').toLowerCase(),
+        
+        // Category Information
+        Brand: p.Brand || '',
+        categoryId: p.categoryId || '',
+        Series: p.Series || '',
+        subcategoryId: p.subcategoryId || '',
+        
+        // Specifications
+        Model: p.Model || '',
+        Processor: p.Processor || '',
+        Genaration: p.Genaration || '',
+        RAM: p.RAM || '',
+        ROM: p.ROM || '',
+        
+        // Stock Details
         stockQty: Number(p.stockQty || 0),
-        details: p.details || '',
-        keywords: (p.name + ' ' + (p.details || '')).toLowerCase().split(/\s+/).filter(Boolean),
+        CostPrice: Number(p.CostPrice || 0),
+        
+        // Generated Fields
+        details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
+        keywords: [
+          p.Item,
+          ...(p.Brand ? p.Brand.split(' ') : []),
+          p.Series,
+          p.Model,
+          p.Processor,
+          p.Genaration,
+          p.RAM,
+          p.ROM
+        ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
       });
       this.notification.success('Product updated!');
     } catch (e: any) {
@@ -67,12 +117,29 @@ export class ProductsService {
     }
   }
 
-  // Search Product by Name
+  // Search Product by Name (now searches by Item name)
   async searchByName(prefix: string) {
     const low = prefix.toLowerCase();
-    const q = query(collection(this.db, 'products'), orderBy('nameLower'), startAt(low), endAt(low + '\uf8ff'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    // Search by both Item and nameLower for backwards compatibility
+    const byItem = query(collection(this.db, 'products'), 
+      orderBy('Item'), startAt(prefix), endAt(prefix + '\uf8ff'));
+    const byName = query(collection(this.db, 'products'), 
+      orderBy('nameLower'), startAt(low), endAt(low + '\uf8ff'));
+    
+    const [snapItem, snapName] = await Promise.all([
+      getDocs(byItem),
+      getDocs(byName)
+    ]);
+
+    // Combine and deduplicate results
+    const results = new Map();
+    [...snapItem.docs, ...snapName.docs].forEach(doc => {
+      if (!results.has(doc.id)) {
+        results.set(doc.id, { id: doc.id, ...(doc.data() as any) });
+      }
+    });
+
+    return Array.from(results.values());
   }
 
   // Search Product by Keyword
