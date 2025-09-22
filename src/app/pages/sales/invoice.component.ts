@@ -61,11 +61,7 @@ import { Invoice } from '../../models/invoice.model';
                     <strong>{{item.name}}</strong>
                     <ng-container *ngIf="productDetails.get(item.productId) as product">
                       <div class="specs">
-                        <small *ngIf="product.Brand">{{product.Brand}}</small>
-                        <small *ngIf="product.Model">Model: {{product.Model}}</small>
-                        <small *ngIf="product.Processor">{{product.Processor}} {{product.Genaration}}</small>
-                        <small *ngIf="product.RAM || product.ROM">{{product.RAM}} {{product.ROM}}</small>
-                        <small *ngIf="product.Description" class="description">{{product.Description}}</small>
+                        <small class="formatted-description">{{product.formattedDescription || item.description}}</small>
                       </div>
                     </ng-container>
                   </div>
@@ -464,13 +460,10 @@ private addItemsAndFinancialSummaryTable() {
     // Add invoice items
     this.invoice.items.forEach((item, index) => {
       const product = this.productDetails.get(item.productId);
+      // Use the stored formatted description from the product or line item
       let descriptionText = '';
       if (product) {
-        if (product.Brand) descriptionText += `${product.Brand} `;
-        if (product.Model) descriptionText += `Model: ${product.Model}\n`;
-        if (product.Processor) descriptionText += `${product.Processor} ${product.Genaration || ''}\n`;
-        if (product.RAM || product.ROM) descriptionText += `${product.RAM || ''} ${product.ROM || ''}\n`;
-        if (product.Description) descriptionText += product.Description;
+        descriptionText = product.formattedDescription || '';
       } else {
         descriptionText = item.description || 'N/A';
       }

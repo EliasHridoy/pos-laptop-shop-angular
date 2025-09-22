@@ -61,7 +61,8 @@ export class SalesService {
             name: data.name,
             qty,
             sellPrice: finalSellPrice,
-            costPrice
+            costPrice,
+            description: data.formattedDescription || ''
           });
 
           // Prepare stock movement

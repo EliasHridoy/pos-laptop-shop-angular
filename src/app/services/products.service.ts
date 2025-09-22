@@ -9,11 +9,24 @@ export class ProductsService {
   private db = inject(Firestore);
   private notification = inject(NotificationService);
 
+  // Helper function to generate consistent product description
+  private generateProductDescription(p: any): string {
+    let descriptionText = '';
+    if (p.Brand) descriptionText += `${p.Brand} `;
+    if (p.Model) descriptionText += `Model: ${p.Model}\n`;
+    if (p.Series) descriptionText += `Series: ${p.Series}\n`;
+    if (p.Processor) descriptionText += `${p.Processor} ${p.Genaration || ''}\n`;
+    if (p.RAM || p.ROM) descriptionText += `${p.RAM || ''} ${p.ROM || ''}\n`;
+    if (p.Description) descriptionText += p.Description;
+    return descriptionText.trim();
+  }
+
   // Create Product
   async createProduct(p: any) {
     try {
       const ref = await addDoc(collection(this.db, 'products'), {
         // Basic Information
+        No: p.No ? Number(p.No) : null,
         Date: p.Date || new Date(),
         Item: p.Item || '',
         name: p.Item || '', // For backward compatibility
@@ -68,6 +81,7 @@ export class ProductsService {
       const ref = doc(this.db, 'products', id);
       await updateDoc(ref, {
         // Basic Information
+        No: p.No ? Number(p.No) : null,
         Date: p.Date || new Date(),
         Item: p.Item || '',
         name: p.Item || '', // For backward compatibility
@@ -93,7 +107,7 @@ export class ProductsService {
         Status: p.Status || 'Available',
         
         // Generated Fields
-        details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
+        details: this.generateProductDescription(p),
         keywords: [
           p.Item,
           ...(p.Brand ? p.Brand.split(' ') : []),
@@ -166,5 +180,39 @@ export class ProductsService {
     const q = query(collection(this.db, 'products'), ...constraints);
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+  }
+
+  // Get Products by Status
+  async getProductsByStatus(status: ProductStatus | null = null) {
+    try {
+      let q;
+      if (status) {
+        q = query(
+          collection(this.db, 'products'),
+          where('Status', '==', status),
+          orderBy('Date', 'desc')
+        );
+      } else {
+        q = query(
+          collection(this.db, 'products'),
+          orderBy('Date', 'desc')
+        );
+      }
+      
+      const snap = await getDocs(q);
+      const products = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      
+      // Calculate total cost
+      const totalCost = products.reduce((sum, product) => sum + (Number(product.CostPrice) || 0), 0);
+      
+      return {
+        products,
+        totalCost,
+        count: products.length
+      };
+    } catch (e: any) {
+      this.notification.error('Failed to fetch products.');
+      throw e;
+    }
   }
 }

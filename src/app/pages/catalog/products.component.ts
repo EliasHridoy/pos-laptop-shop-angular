@@ -1,17 +1,18 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgFor, NgIf, DatePipe } from '@angular/common';
+import { NgFor, NgIf, DatePipe, DecimalPipe } from '@angular/common';
 import { ProductsService } from '../../services/products.service';
 import { CatalogService } from '../../services/catalog.service';
 import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
 import { UploadExcelService, SheetJson } from '../../services/upload-excel.service';
+import { ProductStatus } from '../../models/product-status.enum';
 
 
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule],
+  imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule, DecimalPipe],
   template: `
     <h2>Products</h2>
     <div class="grid">
@@ -27,6 +28,10 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
           <div class="form-section">
             <h4>Basic Information</h4>
             <div class="details-row">
+              <div class="detail-item">
+                <label>Serial No:</label>
+                <span>{{selectedProduct.No || '-'}}</span>
+              </div>
               <div class="detail-item">
                 <label>Date Added:</label>
                 <span>{{selectedProduct.Date | date}}</span>
@@ -120,13 +125,37 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
           <h3>Products</h3>
           <button class="btn primary" (click)="showForm = true">Add Product</button>
         </div>
-        
-        <input class="input" placeholder="Search by name/keyword" [(ngModel)]="q" (change)="search()" />
-        <button class="btn secondary" (click)="search()">Search</button>
+
+        <div class="filters">
+          <div class="search-box">
+            <input class="input" placeholder="Search by name/keyword" [(ngModel)]="q" (change)="search()" />
+            <button class="btn secondary" (click)="search()">Search</button>
+          </div>
+          
+          <div class="status-filter">
+            <select class="input" [(ngModel)]="selectedStatus" (change)="filterByStatus()">
+              <option [ngValue]="null">All Status</option>
+              <option *ngFor="let status of statusOptions" [value]="status">{{status}}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Status Summary -->
+        <div class="status-summary" *ngIf="selectedStatus === ProductStatus.Available">
+          <div class="summary-item">
+            <span class="label">Available Products:</span>
+            <span class="value">{{productCount}}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Total Cost:</span>
+            <span class="value">৳{{totalCost | number:'1.2-2'}}</span>
+          </div>
+        </div>
 
         <table class="table">
           <thead>
             <tr>
+              <th>#</th>
               <th>Item</th>
               <th>Brand</th>
               <th>Series</th>
@@ -139,6 +168,7 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
           </thead>
           <tbody>
             <tr *ngFor="let p of items | paginate: { itemsPerPage: itemsPerPage, currentPage: currentPage, totalItems: totalItems }">
+              <td>{{p.No || '-'}}</td>
               <td>{{p.Item}}</td>
               <td>{{p.Brand}}</td>
               <td>{{p.Series}}</td>
@@ -206,6 +236,10 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
           <div class="form-section">
             <h4>Basic Information</h4>
             <div class="form-row">
+              <div class="form-group">
+                <label>Serial No.</label>
+                <input type="number" class="input" [(ngModel)]="form.No" name="serialNo" placeholder="Enter serial number" />
+              </div>
               <div class="form-group">
                 <label>Date</label>
                 <input type="date" class="input" [(ngModel)]="form.Date" name="date" required />
@@ -306,6 +340,53 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
     </div>
   `,
   styles: [`
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+      flex: 1;
+    }
+
+    .search-box .input {
+      flex: 1;
+    }
+
+    .status-filter {
+      min-width: 200px;
+    }
+
+    .status-summary {
+      display: flex;
+      gap: 2rem;
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+
+    .summary-item {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .summary-item .label {
+      font-weight: bold;
+      color: #495057;
+    }
+
+    .summary-item .value {
+      font-size: 1.1rem;
+      color: #0d6efd;
+    }
+
     .actions {
       display: flex;
       gap: 0.5rem;
@@ -438,6 +519,11 @@ export class ProductsComponent implements OnInit {
   readonly ProductStatus = ProductStatus; // Make enum available in template
   private catalog = inject(CatalogService);
 
+  // Status filtering
+  selectedStatus: ProductStatus | null = null;
+  statusOptions = Object.values(ProductStatus);
+  productCount = 0;
+  totalCost = 0;
 
   form: StockInModel = {
     No: undefined,
@@ -520,6 +606,14 @@ export class ProductsComponent implements OnInit {
   async save() {
     if (!this.form.Item) return;
 
+    // Add prefixes to RAM and ROM if they don't already have them
+    if (this.form.RAM && !this.form.RAM.startsWith('RAM')) {
+      this.form.RAM = `RAM ${this.form.RAM}`;
+    }
+    if (this.form.ROM && !this.form.ROM.startsWith('ROM')) {
+      this.form.ROM = `ROM ${this.form.ROM}`;
+    }
+
     // Prepare the product data
     const productData = {
       ...this.form,
@@ -596,7 +690,24 @@ export class ProductsComponent implements OnInit {
     this.showDetails = false;
   }
 
+  async filterByStatus() {
+    if (this.q) {
+      // If there's a search query, clear it and reset the search
+      this.q = '';
+    }
+    
+    const result = await this.svc.getProductsByStatus(this.selectedStatus);
+    this.items = result.products;
+    this.totalItems = result.count;
+    this.productCount = result.count;
+    this.totalCost = result.totalCost;
+    return this.totalItems;
+  }
+
   async search() {
+    // Reset status filter when searching
+    this.selectedStatus = null;
+    
     const nameHits = await this.svc.searchByName(this.q);
     console.log('Name hits:', nameHits);
 
@@ -606,6 +717,8 @@ export class ProductsComponent implements OnInit {
     const map = new Map<string, any>(); [...nameHits, ...kwHits].forEach(x => map.set(x.id, x));
     this.items = Array.from(map.values());
     this.totalItems = this.items.length;
+    this.productCount = this.items.length;
+    this.totalCost = this.items.reduce((sum, item) => sum + (Number(item.CostPrice) || 0), 0);
     return this.totalItems;
   }
 
@@ -691,7 +804,6 @@ export interface ExcelData {
   FeedBack?: string;
 }
 
-import { ProductStatus } from '../../models/product-status.enum';
 
 export interface StockInModel {
   No?: number;
