@@ -13,8 +13,8 @@ export class ProductsService {
   private generateProductDescription(p: any): string {
     let descriptionText = '';
     if (p.Brand) descriptionText += `${p.Brand} `;
-    if (p.Model) descriptionText += `Model: ${p.Model}\n`;
-    if (p.Series) descriptionText += `Series: ${p.Series}\n`;
+    if (p.Model) descriptionText += `${p.Model}\n`;
+    if (p.Series) descriptionText += `${p.Series}\n`;
     if (p.Processor) descriptionText += `${p.Processor} ${p.Genaration || ''}\n`;
     if (p.RAM || p.ROM) descriptionText += `${p.RAM || ''} ${p.ROM || ''}\n`;
     if (p.Description) descriptionText += p.Description;
@@ -52,7 +52,7 @@ export class ProductsService {
         Status: p.Status || 'Available',
         
         // Generated Fields
-        details: `${p.Processor || ''} ${p.Genaration || ''} ${p.RAM || ''} ${p.ROM || ''}`.trim(),
+        details: this.generateProductDescription(p),
         keywords: [
           p.Item,
           ...(p.Brand ? p.Brand.split(' ') : []),

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, runTransaction, serverTimestamp } from '@angular/fire/firestore';
+import { Firestore, collection, doc, runTransaction, serverTimestamp, query, where, getDocs } from '@angular/fire/firestore';
 import { CountersService } from './counters.service';
 import { NotificationService } from './notification.service';
 import { ProductStatus } from '../models/product-status.enum';
@@ -59,6 +59,10 @@ export class SalesService {
           const finalSellPrice = sellPrice ?? data.defaultSellPrice;
           const costPrice = Number(data.CostPrice || 0);
 
+          //log data for debug
+          console.log("product data", data);
+          
+
           // Prepare line item
           lineItems.push({
             productId: ref.id,
@@ -66,7 +70,7 @@ export class SalesService {
             qty,
             sellPrice: finalSellPrice,
             costPrice,
-            description: data.formattedDescription || ''
+            description: data.details || ''
           });
 
           // Prepare stock movement
@@ -120,5 +124,15 @@ export class SalesService {
       this.notification.error(error.message || 'Failed to create sale.');
       throw error;
     }
+  }
+
+  async findSaleByInvoice(invoiceNo: string) {
+    const q = query(collection(this.db, 'sales'), where('invoiceNo', '==', invoiceNo));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      return null;
+    }
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() };
   }
 }
