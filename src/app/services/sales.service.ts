@@ -28,24 +28,28 @@ export class SalesService {
     try {
       const saleId: SaleIdResponse = await runTransaction(this.db, async (tx) => {
         const saleRef = doc(collection(this.db, 'sales'));
-        const invoiceNo = await this.counters.nextInvoice('INV');
+        const invoiceCounterRef = this.counters.getInvoiceCounterRef();
 
-        // First, perform all reads
-        const productReads = await Promise.all(
-          payload.items.map(async (line) => {
-            const pref = doc(this.db, 'products', line.productId);
-            const ps = await tx.get(pref);
-            if (!ps.exists()) throw new Error('Product not found');
-            return {
-              ref: pref,
-              data: ps.data() as any,
-              qty: Number(line.qty || 0),
-              sellPrice: Number(line.sellPrice)
-            };
-          })
-        );
+        // Perform all reads first
+        const [invoiceCounterSnap, ...productSnaps] = await Promise.all([
+          tx.get(invoiceCounterRef),
+          ...payload.items.map(line => tx.get(doc(this.db, 'products', line.productId)))
+        ]);
 
-        // Calculate totals and prepare line items
+        // Now perform calculations
+        const { invoiceNo, newCounterData } = this.counters.getNewInvoiceNumberAndCounter(invoiceCounterSnap, 'INV');
+
+        const productReads = productSnaps.map((ps, index) => {
+          if (!ps.exists()) throw new Error('Product not found');
+          const line = payload.items[index];
+          return {
+            ref: ps.ref,
+            data: ps.data() as any,
+            qty: Number(line.qty || 0),
+            sellPrice: Number(line.sellPrice)
+          };
+        });
+
         let subTotal = 0;
         let costTotal = 0;
         const lineItems: any[] = [];
@@ -73,23 +77,22 @@ export class SalesService {
             refId: saleRef.id
           });
 
-          // Calculate totals
           subTotal += finalSellPrice * qty;
           costTotal += costPrice * qty;
         });
 
         // Now perform all writes
+        tx.set(invoiceCounterRef, newCounterData, { merge: true });
+
         productReads.forEach(({ ref }) => {
           tx.update(ref, { Status: ProductStatus.Sold });
         });
 
-        // Create stock movements
         stockMovements.forEach((movement) => {
           const smRef = doc(collection(this.db, 'stockMovements'));
           tx.set(smRef, { ...movement, at: serverTimestamp() });
         });
 
-        // Create sale document
         const sale = {
           invoiceNo,
           type: payload.type,

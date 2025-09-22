@@ -182,6 +182,23 @@ export class ProductsService {
     return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
   }
 
+  // Get Product by ID
+  async getProduct(id: string) {
+    try {
+      const docRef = doc(this.db, 'products', id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...(docSnap.data() as any) };
+      } else {
+        this.notification.error('Product not found.');
+        return null;
+      }
+    } catch (e: any) {
+      this.notification.error('Failed to get product.');
+      throw e;
+    }
+  }
+
   // Get Products by Status
   async getProductsByStatus(status: ProductStatus | null = null) {
     try {
