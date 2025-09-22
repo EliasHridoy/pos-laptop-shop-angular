@@ -572,7 +572,7 @@ export class ProductsComponent implements OnInit {
   constructor(private excel: UploadExcelService) {}
 
   async ngOnInit() {
-    this.categories = await this.catalog.listCategories(null);
+    this.categories = await this.catalog.listParentCategories();
     this.totalItems = await this.search();
   }
 
@@ -590,7 +590,7 @@ export class ProductsComponent implements OnInit {
       this.form.Brand = selectedCategory.name; // Set the Brand name
     }
 
-    this.subcategories = await this.catalog.listCategories(this.form.categoryId);
+    this.subcategories = await this.catalog.listSubcategories(this.form.categoryId);
     this.form.subcategoryId = '';
     this.form.Series = ''; // Reset series when category changes
   }
