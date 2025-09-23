@@ -84,8 +84,9 @@ export class CategoriesComponent implements OnInit {
   categories:any[] = [];
 
   get availableParents(){
-    if(this.editingCategoryId) return this.categories.filter(c=>c.id !== this.editingCategoryId);
-    return this.categories;
+    const parentCategories = this.categories.filter(c => c.parentId === null);
+    if(this.editingCategoryId) return parentCategories.filter(c=>c.id !== this.editingCategoryId);
+    return parentCategories;
   }
 
   async ngOnInit(){
