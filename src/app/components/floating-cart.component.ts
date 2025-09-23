@@ -1,11 +1,11 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-floating-cart',
   standalone: true,
-  imports: [FormsModule, DecimalPipe, NgFor, NgIf],
+  imports: [FormsModule, DecimalPipe, NgFor],
   template: `
     <div style="position: fixed; bottom: 20px; right: 20px; width: 400px; background: white; 
          box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; z-index: 1000; 
@@ -56,8 +56,11 @@ import { FormsModule } from '@angular/forms';
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div class="badge">Total: ৳{{ total() | number:'1.2-2' }}</div>
             <div>
-              <input class="input" type="number" [(ngModel)]="paymentAmount" [max]="total()" 
-                     style="width:120px" placeholder="Payment Amount *" required/>
+              <label>Payment Amount
+                <input class="input" type="number" [(ngModel)]="paymentAmount" [max]="total()" 
+                       (ngModelChange)="onPaymentAmountChange()" (input)="onPaymentAmountChange()"
+                       style="width:120px" placeholder="Payment Amount *" required min="0"/>
+              </label>
             </div>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 8px;">
@@ -69,7 +72,7 @@ import { FormsModule } from '@angular/forms';
     </div>
   `
 })
-export class FloatingCartComponent {
+export class FloatingCartComponent implements OnChanges {
   @Input() cart: any[] = [];
   @Output() cartChange = new EventEmitter<any[]>();
   @Output() clear = new EventEmitter<void>();
@@ -78,6 +81,12 @@ export class FloatingCartComponent {
   paymentAmount: number = 0;
   isCartMinimized = false;
 
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['cart']) {
+      this.updatePaymentAmount();
+    }
+  }
+
   total() { 
     return this.cart.reduce((s, c) => s + (Number(c.qty || 0) * Number(c.sellPrice || 0)), 0); 
   }
@@ -85,9 +94,25 @@ export class FloatingCartComponent {
   removeFromCart(index: number) {
     this.cart.splice(index, 1);
     this.cartChange.emit(this.cart);
+    this.updatePaymentAmount();
   }
 
   updateCart() {
     this.cartChange.emit(this.cart);
+    this.updatePaymentAmount();
+  }
+
+  updatePaymentAmount() {
+    this.paymentAmount = this.total();
+  }
+
+  onPaymentAmountChange() {
+    const total = this.total();
+    if (this.paymentAmount > total) {
+      this.paymentAmount = total;
+    }
+    if (this.paymentAmount < 0) {
+      this.paymentAmount = 0;
+    }
   }
 }

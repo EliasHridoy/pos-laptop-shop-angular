@@ -3,11 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { ReturnsService } from '../../services/returns.service';
 import { SalesService } from '../../services/sales.service';
 import { NgFor, NgIf, DatePipe, CurrencyPipe } from '@angular/common';
+import { ProductSearchComponent } from '../../components/product-search.component';
+import { FloatingCartComponent } from '../../components/floating-cart.component';
 
 @Component({
   selector: 'app-returns',
   standalone: true,
-  imports: [FormsModule, NgFor, NgIf, DatePipe, CurrencyPipe],
+  imports: [FormsModule, NgFor, NgIf, DatePipe, CurrencyPipe, ProductSearchComponent, FloatingCartComponent],
   styles: [`
     :host {
       display: block;
@@ -78,7 +80,18 @@ import { NgFor, NgIf, DatePipe, CurrencyPipe } from '@angular/common';
             </tr>
           </tbody>
         </table>
-        <button class="btn" (click)="submitReturn()" [disabled]="itemsToReturn.length === 0">Process Return</button>
+        <button class="btn" (click)="processReturnAndExchange()" [disabled]="itemsToReturn.length === 0 && cart.length === 0">Process Return & Exchange</button>
+        
+        <hr>
+
+        <app-product-search (addProduct)="addToCart($event)"></app-product-search>
+        <app-floating-cart 
+            [cart]="cart" 
+            (cartChange)="cart = $event" 
+            (clear)="clearCart()" 
+            (checkout)="processReturnAndExchange()">
+        </app-floating-cart>
+
       </div>
       <div *ngIf="searchPerformed && !sale">
         <p>No sale found with that invoice number.</p>
@@ -93,6 +106,7 @@ export class ReturnsComponent {
   invoiceNo = '';
   sale: any = null;
   searchPerformed = false;
+  cart: any[] = [];
   
   get itemsToReturn() {
       return this.sale ? this.sale.items.filter((i:any) => i.isReturned) : [];
@@ -114,14 +128,45 @@ export class ReturnsComponent {
     }
   }
 
-  async submitReturn() {
-    if (!this.sale || this.itemsToReturn.length === 0) return;
+  addToCart(product: any) {
+    const existing = this.cart.find(x => x.id === product.id);
+    if (existing) {
+      existing.qty++;
+    } else {
+      this.cart.push({ 
+        id: product.id, 
+        name: product.name,
+        brand: product.Brand,
+        series: product.Series,
+        model: product.Model,
+        productId: product.ProductID,
+        ram: product.RAM,
+        rom: product.ROM,
+        qty: 1, 
+        price: product.price || 0,
+        sellPrice: product.price || 0
+      });
+    }
+  }
 
-    await this.returnsSvc.processReturn(this.sale, this.itemsToReturn);
+  clearCart() {
+    this.cart = [];
+  }
+
+  async processReturnAndExchange() {
+    if (!this.sale) return;
+
+    const returnedItems = this.itemsToReturn;
+    const newItems = this.cart;
+
+    if (returnedItems.length === 0 && newItems.length === 0) return;
+
+    await this.returnsSvc.processReturn(this.sale, returnedItems, newItems);
     
     this.invoiceNo = '';
     this.sale = null;
     this.searchPerformed = false;
+    this.cart = [];
   }
 }
  
