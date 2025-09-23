@@ -39,6 +39,26 @@ import { FloatingCartComponent } from '../../components/floating-cart.component'
         grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
     }
+    .status-info {
+      margin: 16px 0;
+    }
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid;
+    }
+    .alert-warning {
+      background-color: #fef3c7;
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+    .alert strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+    .alert p {
+      margin: 0;
+    }
   `],
   template: `
     <h2>Sales Return</h2>
@@ -58,39 +78,70 @@ import { FloatingCartComponent } from '../../components/floating-cart.component'
             <p><strong>Total:</strong> {{sale.total | currency}}</p>
             <p><strong>Profit:</strong> {{sale.profit | currency}}</p>
         </div>
-
-        <h4>Items to Return</h4>
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" (change)="toggleAllItems($event)"></th>
-              <th>Product</th>
-              <th>Description</th>
-              <th>Qty</th>
-              <th>Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let item of sale.items">
-              <td><input type="checkbox" [(ngModel)]="item.isReturned"></td>
-              <td>{{item.name}}</td>
-              <td>{{item.description}}</td>
-              <td>{{item.qty}}</td>
-              <td>{{item.sellPrice | currency}}</td>
-            </tr>
-          </tbody>
-        </table>
-        <button class="btn" (click)="processReturnAndExchange()" [disabled]="itemsToReturn.length === 0 && cart.length === 0">Process Return & Exchange</button>
         
-        <hr>
+        <div class="status-info" *ngIf="sale.status === 'Inactive'">
+          <div class="alert alert-warning">
+            <strong>⚠️ Inactive Invoice</strong>
+            <p>This invoice is inactive and cannot be used for returns. Returns have already been processed for this invoice.</p>
+          </div>
+        </div>
 
-        <app-product-search (addProduct)="addToCart($event)"></app-product-search>
-        <app-floating-cart 
-            [cart]="cart" 
-            (cartChange)="cart = $event" 
-            (clear)="clearCart()" 
-            (checkout)="processReturnAndExchange()">
-        </app-floating-cart>
+        <div *ngIf="sale.status !== 'Inactive'">
+          <h4>Items to Return</h4>
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" (change)="toggleAllItems($event)"></th>
+                <th>Product</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of sale.items">
+                <td><input type="checkbox" [(ngModel)]="item.isReturned"></td>
+                <td>{{item.name}}</td>
+                <td>{{item.description}}</td>
+                <td>{{item.qty}}</td>
+                <td>{{item.sellPrice | currency}}</td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn" (click)="processReturnAndExchange()" [disabled]="itemsToReturn.length === 0 && cart.length === 0">Process Return & Exchange</button>
+          
+          <hr>
+
+          <app-product-search (addProduct)="addToCart($event)"></app-product-search>
+          <app-floating-cart 
+              [cart]="cart" 
+              (cartChange)="cart = $event" 
+              (clear)="clearCart()" 
+              (checkout)="processReturnAndExchange()">
+          </app-floating-cart>
+        </div>
+        
+        <div *ngIf="sale.status === 'Inactive'">
+          <h4>Invoice Items (View Only)</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of sale.items">
+                <td>{{item.name}}</td>
+                <td>{{item.description}}</td>
+                <td>{{item.qty}}</td>
+                <td>{{item.sellPrice | currency}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
       </div>
       <div *ngIf="searchPerformed && !sale">
@@ -155,6 +206,12 @@ export class ReturnsComponent {
 
   async processReturnAndExchange() {
     if (!this.sale) return;
+
+    // Check if the sale is inactive
+    if (this.sale.status === 'Inactive') {
+      alert('Cannot process return for inactive invoice. Returns have already been processed for this invoice.');
+      return;
+    }
 
     const returnedItems = this.itemsToReturn;
     const newItems = this.cart;

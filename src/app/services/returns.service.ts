@@ -65,7 +65,7 @@ export class ReturnsService {
                 profit: subTotal - costTotal,
                 createdAt: serverTimestamp(),
                 originalSaleId: originalSale.id,
-                status: 'COMPLETED'
+                status: 'Active'
             };
             delete newSalePayload.id;
 
@@ -74,7 +74,7 @@ export class ReturnsService {
 
             // 5. Update original sale status to indicate it has been returned against.
             const originalSaleRef = doc(this.db, 'sales', originalSale.id);
-            tx.update(originalSaleRef, { status: 'RETURNED' });
+            tx.update(originalSaleRef, { status: 'Inactive' });
 
             // 6. Create a 'return' document for auditing.
             const returnRef = doc(collection(this.db, 'returns'));

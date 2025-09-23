@@ -110,7 +110,7 @@ export class SalesService {
           customer: payload.customer || null,
           soldBy: payload.soldBy || null,
           note: payload.note || '',
-          status: 'COMPLETED',
+          status: 'Active',
           createdAt: serverTimestamp(),
         };
         tx.set(saleRef, sale);
