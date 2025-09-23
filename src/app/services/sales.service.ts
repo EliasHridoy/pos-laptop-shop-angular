@@ -30,56 +30,94 @@ export class SalesService {
         const saleRef = doc(collection(this.db, 'sales'));
         const invoiceCounterRef = this.counters.getInvoiceCounterRef();
 
-        // Perform all reads first
-        const [invoiceCounterSnap, ...productSnaps] = await Promise.all([
-          tx.get(invoiceCounterRef),
-          ...payload.items.map(line => tx.get(doc(this.db, 'products', line.productId)))
-        ]);
+        // For DIRECT sales, we need to read products from the database
+        // For INSTANT sales, products info is already in the items
+        let productReads: any[] = [];
+        let invoiceCounterSnap;
+
+        if (payload.type === 'DIRECT') {
+          // Perform all reads first for direct sales
+          const reads = await Promise.all([
+            tx.get(invoiceCounterRef),
+            ...payload.items.map(line => tx.get(doc(this.db, 'products', line.productId)))
+          ]);
+          
+          invoiceCounterSnap = reads[0];
+          const productSnaps = reads.slice(1);
+
+          productReads = productSnaps.map((ps, index) => {
+            if (!ps.exists()) throw new Error('Product not found');
+            const line = payload.items[index];
+            return {
+              ref: ps.ref,
+              data: ps.data() as any,
+              qty: Number(line.qty || 0),
+              sellPrice: Number(line.sellPrice),
+              isInstant: false
+            };
+          });
+        } else {
+          // For INSTANT sales, only read counter
+          invoiceCounterSnap = await tx.get(invoiceCounterRef);
+          
+          // Transform instant items to match the structure
+          productReads = payload.items.map((item, index) => ({
+            ref: null, // No database reference for instant products
+            data: item, // The item already contains all the product info
+            qty: Number(item.qty || 1),
+            sellPrice: Number(item.sellPrice),
+            isInstant: true
+          }));
+        }
 
         // Now perform calculations
         const { invoiceNo, newCounterData } = this.counters.getNewInvoiceNumberAndCounter(invoiceCounterSnap, 'INV');
-
-        const productReads = productSnaps.map((ps, index) => {
-          if (!ps.exists()) throw new Error('Product not found');
-          const line = payload.items[index];
-          return {
-            ref: ps.ref,
-            data: ps.data() as any,
-            qty: Number(line.qty || 0),
-            sellPrice: Number(line.sellPrice)
-          };
-        });
 
         let subTotal = 0;
         let costTotal = 0;
         const lineItems: any[] = [];
         const stockMovements: any[] = [];
 
-        productReads.forEach(({ ref, data, qty, sellPrice }) => {
-          const finalSellPrice = sellPrice ?? data.defaultSellPrice;
-          const costPrice = Number(data.CostPrice || 0);
+        productReads.forEach(({ ref, data, qty, sellPrice, isInstant }) => {
+          const finalSellPrice = sellPrice;
+          let costPrice: number;
+          let productName: string;
+          let productDescription: string;
 
-          //log data for debug
-          console.log("product data", data);
-          
+          if (isInstant) {
+            // For instant products, use the data directly from the cart item
+            costPrice = Number(data.costPrice || 0);
+            productName = data.name || `${data.brand} ${data.series} ${data.model}`;
+            productDescription = `${data.brand} ${data.series} ${data.model} - ${data.processor} ${data.generation} Gen, ${data.ram} RAM, ${data.rom} ROM${data.description ? ', ' + data.description : ''}`;
+          } else {
+            // For direct sales, use product data from database
+            costPrice = Number(data.CostPrice || 0);
+            productName = data.name;
+            productDescription = data.details || '';
+            
+            console.log("product data", data);
+          }
 
           // Prepare line item
           lineItems.push({
-            productId: ref.id,
-            name: data.name,
+            productId: ref?.id || data.id,
+            name: productName,
             qty,
             sellPrice: finalSellPrice,
             costPrice,
-            description: data.details || ''
+            description: productDescription,
+            isInstant: isInstant || false
           });
 
-          // Prepare stock movement
-          stockMovements.push({
-            productId: ref.id,
-            qty: -qty,
-            type: 'SALE',
-            refId: saleRef.id
-          });
+          // Only create stock movements for direct sales (actual products)
+          if (!isInstant && ref) {
+            stockMovements.push({
+              productId: ref.id,
+              qty: -qty,
+              type: 'SALE',
+              refId: saleRef.id
+            });
+          }
 
           subTotal += finalSellPrice * qty;
           costTotal += costPrice * qty;
@@ -88,10 +126,16 @@ export class SalesService {
         // Now perform all writes
         tx.set(invoiceCounterRef, newCounterData, { merge: true });
 
-        productReads.forEach(({ ref }) => {
-          tx.update(ref, { Status: ProductStatus.Sold });
-        });
+        // Only update product status for direct sales
+        if (payload.type === 'DIRECT') {
+          productReads.forEach(({ ref, isInstant }) => {
+            if (!isInstant && ref) {
+              tx.update(ref, { Status: ProductStatus.Sold });
+            }
+          });
+        }
 
+        // Only create stock movements for direct sales
         stockMovements.forEach((movement) => {
           const smRef = doc(collection(this.db, 'stockMovements'));
           tx.set(smRef, { ...movement, at: serverTimestamp() });
