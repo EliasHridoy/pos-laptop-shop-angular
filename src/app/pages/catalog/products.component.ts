@@ -6,6 +6,8 @@ import { CatalogService } from '../../services/catalog.service';
 import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
 import { UploadExcelService, SheetJson } from '../../services/upload-excel.service';
 import { ProductStatus } from '../../models/product-status.enum';
+import { ExcelData } from '../../models/excel-data.model';
+import { StockInModel } from '../../models/stock-in.model';
 
 
 
@@ -779,47 +781,4 @@ async onFile(evt: Event) {
     };
   }
 }
-}
-
-
-export interface ExcelData {
-  No?: number;
-  Date?: string;
-  Item?: string;
-  Brand?: string;
-  Series?: string;
-  Model?: string;
-  Processor?: string;
-  Genaration?: string;
-  RAM?: string;
-  ROM?: string;
-  ProductID?: string;
-  CostPrice?: number;
-  AskingPrice?: number;
-  Revenue?: number;
-  NetRevenue?: number;
-  SockOutDate?: string;
-  SaleInvoiceNo?: string;
-  Status?: string;
-  FeedBack?: string;
-}
-
-
-export interface StockInModel {
-  No?: number;
-  Date?: string;
-  Item?: string;
-  categoryId?: string; // Display name Brand
-  Brand?: string; // category name
-  subcategoryId?: string;  // Display name Series
-  Series?: string; // subcategory name
-  Model?: string;
-  Processor?: string;
-  Genaration?: string;
-  RAM?: string;
-  ROM?: string;
-  ProductID?: string;
-  CostPrice?: number;
-  Description?: string;
-  Status?: ProductStatus;
 }
