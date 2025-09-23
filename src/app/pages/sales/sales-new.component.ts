@@ -404,6 +404,18 @@ export class SalesNewComponent implements OnInit {
     Status: ProductStatus.Available
   };
 
+  // Helper function to generate consistent product description
+  private generateProductDescription(p: any): string {
+    let descriptionText = '';
+    if (p.Brand || p.brand) descriptionText += `${p.Brand || p.brand} `;
+    if (p.Model || p.model) descriptionText += `${p.Model || p.model}\n`;
+    if (p.Series || p.series) descriptionText += `${p.Series || p.series}\n`;
+    if (p.Processor || p.processor) descriptionText += `${p.Processor || p.processor} ${p.Genaration || p.generation || ''}\n`;
+    if (p.RAM || p.ram || p.ROM || p.rom) descriptionText += `${p.RAM || p.ram || ''} ${p.ROM || p.rom || ''}\n`;
+    if (p.Description || p.description) descriptionText += p.Description || p.description;
+    return descriptionText.trim();
+  }
+
   async ngOnInit() {
     this.categories = await this.catalog.listParentCategories();
   }
@@ -447,23 +459,26 @@ export class SalesNewComponent implements OnInit {
     // Generate a unique temporary ID for instant products
     const tempId = 'instant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
-    // Create product name/description for cart display
+    // Create product name for cart display
     const productName = `${this.productForm.Brand} ${this.productForm.Series} ${this.productForm.Model}`;
+    
+    // Generate description using the same logic as products service
+    const generatedDescription = this.generateProductDescription(this.productForm);
     
     const cartItem = {
       id: tempId,
       isInstant: true,
+      productId: this.productForm.ProductID,
       name: productName,
+      description: generatedDescription, // Generated description for instant sale
+      costPrice: this.productForm.CostPrice,
       brand: this.productForm.Brand,
       series: this.productForm.Series,
       model: this.productForm.Model,
-      productId: this.productForm.ProductID,
       processor: this.productForm.Processor,
       generation: this.productForm.Genaration,
       ram: this.productForm.RAM,
       rom: this.productForm.ROM,
-      costPrice: this.productForm.CostPrice,
-      description: this.productForm.Description,
       qty: 1,
       sellPrice: this.sellPrice
     };
@@ -555,12 +570,14 @@ export class SalesNewComponent implements OnInit {
       return;
     }
     this.cart.push({ 
-      id: p.id, 
-      name: p.name,
+      id: p.id,
+      productId: p.ProductID,
+      name: p.name || p.Item,
+      description: p.details || '', // Use existing product details for direct sale
+      costPrice: p.CostPrice || 0,
       brand: p.Brand,
       series: p.Series,
       model: p.Model,
-      productId: p.ProductID,
       ram: p.RAM,
       rom: p.ROM,
       qty: 1, 
@@ -601,28 +618,23 @@ export class SalesNewComponent implements OnInit {
     let items: any[];
     
     if (this.mode === 'DIRECT') {
-      // For direct sales, map to the expected format for existing products
+      // For direct sales, ensure all required fields are included
       items = data.cart.map(c => ({ 
-        productId: c.id, 
-        qty: +c.qty, 
+        productId: c.productId || c.id,
+        qty: +c.qty,
+        name: c.name,
+        description: c.description, // Use existing product details
+        costPrice: c.costPrice || 0,
         sellPrice: +c.sellPrice 
       }));
     } else {
-      // For instant sales, pass the full product information
+      // For instant sales, ensure all required fields are included
       items = data.cart.map(c => ({
-        id: c.id,
-        name: c.name,
-        brand: c.brand,
-        series: c.series,
-        model: c.model,
         productId: c.productId,
-        processor: c.processor,
-        generation: c.generation,
-        ram: c.ram,
-        rom: c.rom,
-        costPrice: c.costPrice,
-        description: c.description,
         qty: +c.qty,
+        name: c.name,
+        description: c.description, // Use generated description
+        costPrice: c.costPrice,
         sellPrice: +c.sellPrice
       }));
     }

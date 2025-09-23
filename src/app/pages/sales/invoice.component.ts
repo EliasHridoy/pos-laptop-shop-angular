@@ -59,14 +59,12 @@ import { Invoice } from '../../models/invoice.model';
                 <td>
                   <div class="product-info">
                     <strong>{{item.name}}</strong>
-                    <ng-container *ngIf="productDetails.get(item.productId) as product">
                       <div class="specs">
-                        <small class="formatted-description">{{product.formattedDescription || item.description}}</small>
-                      </div>
-                    </ng-container>
+                      <small class="formatted-description">{{item.description}}</small>
+                    </div>
                   </div>
                 </td>
-                <td>{{item.serialNumber || (productDetails.get(item.productId)?.ProductID) || '-'}}</td>
+                <td>{{item.productId || 'N/A'}}</td>
                 <td>{{item.qty}}</td>
                 <td>{{item.sellPrice | number:'1.2-2'}}</td>
                 <td>{{(item.qty * item.sellPrice) | number:'1.2-2'}}</td>
@@ -459,19 +457,13 @@ private addItemsAndFinancialSummaryTable() {
 
     // Add invoice items
     this.invoice.items.forEach((item, index) => {
-      const product = this.productDetails.get(item.productId);
       // Use the stored formatted description from the product or line item
-      let descriptionText = '';
-      if (product) {
-        descriptionText = product.formattedDescription || '';
-      } else {
-        descriptionText = item.description || 'N/A';
-      }
+      let descriptionText = item.description || 'N/A';
 
       tableBody.push([
         `${index + 1}`,
         item.name + (descriptionText ? `\n${descriptionText}` : ''),
-        item.serialNumber || (product?.ProductID || '-'),
+        (item.productId || 'N/A'),
         item.qty.toString(),
         `${item.sellPrice.toFixed(2)}`,
         `${(item.qty * item.sellPrice).toFixed(2)}`

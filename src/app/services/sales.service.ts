@@ -50,7 +50,8 @@ export class SalesService {
             const line = payload.items[index];
             return {
               ref: ps.ref,
-              data: ps.data() as any,
+              data: line, // Use the item data from frontend (includes description, costPrice, etc.)
+              dbData: ps.data() as any, // Keep database data for status updates
               qty: Number(line.qty || 0),
               sellPrice: Number(line.sellPrice),
               isInstant: false
@@ -64,6 +65,7 @@ export class SalesService {
           productReads = payload.items.map((item, index) => ({
             ref: null, // No database reference for instant products
             data: item, // The item already contains all the product info
+            dbData: null, // No database data for instant products
             qty: Number(item.qty || 1),
             sellPrice: Number(item.sellPrice),
             isInstant: true
@@ -78,29 +80,32 @@ export class SalesService {
         const lineItems: any[] = [];
         const stockMovements: any[] = [];
 
-        productReads.forEach(({ ref, data, qty, sellPrice, isInstant }) => {
+        productReads.forEach(({ ref, data, dbData, qty, sellPrice, isInstant }) => {
           const finalSellPrice = sellPrice;
           let costPrice: number;
           let productName: string;
           let productDescription: string;
+          let productId: string;
 
           if (isInstant) {
             // For instant products, use the data directly from the cart item
             costPrice = Number(data.costPrice || 0);
-            productName = data.name || `${data.brand} ${data.series} ${data.model}`;
-            productDescription = `${data.brand} ${data.series} ${data.model} - ${data.processor} ${data.generation} Gen, ${data.ram} RAM, ${data.rom} ROM${data.description ? ', ' + data.description : ''}`;
-          } else {
-            // For direct sales, use product data from database
-            costPrice = Number(data.CostPrice || 0);
             productName = data.name;
-            productDescription = data.details || '';
+            productDescription = data.description;
+            productId = data.productId;
+          } else {
+            // For direct sales, use the item data from frontend
+            costPrice = Number(data.costPrice || 0);
+            productName = data.name;
+            productDescription = data.description;
+            productId = data.productId;
             
-            console.log("product data", data);
+            console.log("direct sale item data", data);
           }
 
           // Prepare line item
           lineItems.push({
-            productId: ref?.id || data.id,
+            productId: productId,
             name: productName,
             qty,
             sellPrice: finalSellPrice,
