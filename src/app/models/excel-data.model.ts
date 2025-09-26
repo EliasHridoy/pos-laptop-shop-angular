@@ -1,5 +1,5 @@
 export interface ExcelData {
-  No?: number;
+  No?: string;
   Date?: string;
   Item?: string;
   Brand?: string;
@@ -10,10 +10,10 @@ export interface ExcelData {
   RAM?: string;
   ROM?: string;
   ProductID?: string;
-  CostPrice?: number;
-  AskingPrice?: number;
-  Revenue?: number;
-  NetRevenue?: number;
+  CostPrice?: string;
+  AskingPrice?: string;
+  Revenue?: string;
+  NetRevenue?: string;
   SockOutDate?: string;
   SaleInvoiceNo?: string;
   Status?: string;

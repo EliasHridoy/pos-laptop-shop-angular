@@ -742,36 +742,8 @@ async onFile(evt: Event) {
 
   if (data.length > 0) {
     const firstSheet = data[0];
-    // Map the raw data to Stock interface
-    const excelHeaders = Object.keys(firstSheet.rows[0] || {});
-    console.log('Excel Headers:', excelHeaders);
-
-    const rows = firstSheet.rows
-      .slice(0, 100) // Take only first 100 rows
-      .map(row => {
-        const stock: ExcelData = {
-          No: Number(row[excelHeaders[0]]) || undefined,
-          Date: row[excelHeaders[1]]?.toString(),
-          Item: row[excelHeaders[2]]?.toString(),
-          Brand: row[excelHeaders[3]]?.toString(),
-          Series: row[excelHeaders[4]]?.toString(),
-          Model: row[excelHeaders[5]]?.toString(),
-          Processor: row[excelHeaders[6]]?.toString(),
-          Genaration: row[excelHeaders[7]]?.toString(),
-          RAM: row[excelHeaders[8]]?.toString(),
-          ROM: row[excelHeaders[9]]?.toString(),
-          ProductID: row[excelHeaders[10]]?.toString(),
-          CostPrice: Number(row[excelHeaders[11]]) || undefined,
-          AskingPrice: Number(row[excelHeaders[12]]) || undefined,
-          Revenue: Number(row[excelHeaders[13]]) || undefined,
-          NetRevenue: Number(row[excelHeaders[14]]) || undefined,
-          SockOutDate: row[excelHeaders[15]]?.toString(),
-          SaleInvoiceNo: row[excelHeaders[16]]?.toString(),
-          Status: row[excelHeaders[17]]?.toString(),
-          FeedBack: row[excelHeaders[18]]?.toString()
-        };
-        return stock;
-      });
+    // The data is already mapped to ExcelData[], so we can use it directly.
+    const rows = firstSheet.rows.slice(0, 100); // Take only first 100 rows for preview
 
     console.log('Mapped Stock Rows:', rows);
 
