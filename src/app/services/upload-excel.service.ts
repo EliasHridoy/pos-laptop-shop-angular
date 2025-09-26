@@ -48,8 +48,6 @@ export class UploadExcelService {
         const rowObject: ExcelData = {};
         propertyNames.forEach((propName, index) => {
           const value = rowArray[index];
-          //log value
-          console.log(value);
           if (value instanceof Date) {
             // Handle dates - format as YYYY-MM-DD string
             (rowObject as any)[propName] = value.toISOString().split('T')[0];

@@ -8,13 +8,14 @@ import { UploadExcelService, SheetJson } from '../../services/upload-excel.servi
 import { ProductStatus } from '../../models/product-status.enum';
 import { ExcelData } from '../../models/excel-data.model';
 import { StockInModel } from '../../models/stock-in.model';
+import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload.component';
 
 
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule, DecimalPipe],
+  imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule, DecimalPipe, ExcelUploadComponent],
   template: `
     <h2>Products</h2>
     <div class="grid">
@@ -212,26 +213,7 @@ import { StockInModel } from '../../models/stock-in.model';
           <button class="btn secondary" (click)="showForm = false">Close</button>
         </div>
 
-        <input type="file" accept=".xlsx,.xls" (change)="onFile($event)" />
-        
-        <!-- Excel Preview Table -->
-        <div *ngIf="previewData" class="excel-preview" style="margin: 1rem 0;">
-          <h4>Excel Preview (First 100 rows)</h4>
-          <div class="table-responsive">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th *ngFor="let header of previewData.headers">{{header}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let row of previewData.rows">
-                  <td *ngFor="let header of previewData.headers">{{row[header]}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <app-excel-upload></app-excel-upload>
 
         <form (submit)="save()" class="stock-in-form">
           <!-- Basic Information -->
@@ -563,15 +545,9 @@ export class ProductsComponent implements OnInit {
   // Available page sizes
   readonly pageSizes = [10, 50, 100, 500];
 
-  data: SheetJson[] | null = null;
-  previewData: { headers: (keyof ExcelData)[]; rows: ExcelData[] } | null = null;
-  readonly stockHeaders: (keyof ExcelData)[] = [
-    'No', 'Date', 'Item', 'Brand', 'Series', 'Model', 'Processor', 
-    'Genaration', 'RAM', 'ROM', 'ProductID', 'CostPrice', 'AskingPrice', 
-    'Revenue', 'NetRevenue', 'SockOutDate', 'SaleInvoiceNo', 'Status', 'FeedBack'
-  ];
+  excelData: SheetJson<ExcelData>[] | null = null;
 
-  constructor(private excel: UploadExcelService) {}
+  constructor() {}
 
   async ngOnInit() {
     this.categories = await this.catalog.listParentCategories();
@@ -731,26 +707,4 @@ export class ProductsComponent implements OnInit {
   onPageSizeChange() {
     this.currentPage = 1; // Reset to first page when changing page size
   }
-
-async onFile(evt: Event) {
-  const input = evt.target as HTMLInputElement | null;
-  const file = input?.files?.item(0);
-  if (!file) return;
-  
-  const data = await this.excel.readFileToJson(file);
-  this.data = data;
-
-  if (data.length > 0) {
-    const firstSheet = data[0];
-    // The data is already mapped to ExcelData[], so we can use it directly.
-    const rows = firstSheet.rows.slice(0, 100); // Take only first 100 rows for preview
-
-    console.log('Mapped Stock Rows:', rows);
-
-    this.previewData = {
-      headers: this.stockHeaders,
-      rows
-    };
-  }
-}
 }
