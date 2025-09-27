@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, 
-         orderBy, query, runTransaction, where, startAt, endAt, serverTimestamp } from '@angular/fire/firestore';
+         orderBy, query, runTransaction, where, startAt, endAt, serverTimestamp, writeBatch } from '@angular/fire/firestore';
 import { NotificationService } from './notification.service';
 import { ProductStatus } from '../models/product-status.enum';
 
@@ -71,6 +71,55 @@ export class ProductsService {
       this.notification.success('Product added!');
     } catch (e: any) {
       this.notification.error('Failed to add product.');
+      throw e;
+    }
+  }
+
+  // Batch Create Products
+  async addProductsBatch(products: any[]) {
+    const batch = writeBatch(this.db);
+    products.forEach(p => {
+      const newDocRef = doc(collection(this.db, 'products'));
+      batch.set(newDocRef, {
+        No: p.No ? Number(p.No) : null,
+        Date: p.Date || new Date(),
+        Item: p.Item || '',
+        name: p.Item || '',
+        nameLower: (p.Item || '').toLowerCase(),
+        Brand: p.Brand || '',
+        categoryId: p.categoryId || '',
+        Series: p.Series || '',
+        subcategoryId: p.subcategoryId || '',
+        Model: p.Model || '',
+        Processor: p.Processor || '',
+        Genaration: p.Genaration || '',
+        RAM: p.RAM || '',
+        ROM: p.ROM || '',
+        ProductID: p.ProductID || '',
+        CostPrice: Number(p.CostPrice || 0),
+        Description: p.Description || '',
+        Status: p.Status || 'Available',
+        details: this.generateProductDescription(p),
+        keywords: [
+          p.Item,
+          ...(p.Brand ? p.Brand.split(' ') : []),
+          p.Series,
+          p.Model,
+          p.Processor,
+          p.Genaration,
+          p.RAM,
+          p.ROM,
+          p.ProductID
+        ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
+        createdAt: serverTimestamp()
+      });
+    });
+
+    try {
+      await batch.commit();
+      this.notification.success(`${products.length} products added successfully!`);
+    } catch (e) {
+      this.notification.error('Failed to add products in batch.');
       throw e;
     }
   }

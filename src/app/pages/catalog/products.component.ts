@@ -207,15 +207,27 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
       </div>
 
       <!-- Stock In Form -->
-      <div class="card" *ngIf="showForm">
+      <div class="card stock-in-card" *ngIf="showForm">
         <div class="header-actions">
           <h3>{{editingId ? 'Edit Product' : 'Stock In Form'}}</h3>
           <button class="btn secondary" (click)="showForm = false">Close</button>
         </div>
 
-        <app-excel-upload></app-excel-upload>
+        <!-- Add Mode Selection -->
+        <div class="add-mode-selector" *ngIf="!editingId">
+          <label>
+            <input type="radio" name="addMode" value="regular" [(ngModel)]="addMode">
+            Regular Add
+          </label>
+          <label>
+            <input type="radio" name="addMode" value="batch" [(ngModel)]="addMode">
+            Batch Add from Excel
+          </label>
+        </div>
 
-        <form (submit)="save()" class="stock-in-form">
+        <app-excel-upload *ngIf="addMode === 'batch' && !editingId"></app-excel-upload>
+
+        <form (submit)="save()" class="stock-in-form" *ngIf="addMode === 'regular' || editingId">
           <!-- Basic Information -->
           <div class="form-section">
             <h4>Basic Information</h4>
@@ -431,6 +443,22 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
       margin-bottom: 1rem;
     }
 
+    .add-mode-selector {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+
+    .add-mode-selector label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
     .stock-in-form {
       max-width: 100%;
       padding: 1rem;
@@ -495,7 +523,10 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
       color: #666;
       font-size: 0.9rem;
     }
-  `]
+
+    .stock-in-card {
+      min-width: 0;
+    }`]
 })
 export class ProductsComponent implements OnInit {
   // Component logic
@@ -508,6 +539,7 @@ export class ProductsComponent implements OnInit {
   statusOptions = Object.values(ProductStatus);
   productCount = 0;
   totalCost = 0;
+  addMode: 'regular' | 'batch' = 'regular';
 
   form: StockInModel = {
     No: undefined,
