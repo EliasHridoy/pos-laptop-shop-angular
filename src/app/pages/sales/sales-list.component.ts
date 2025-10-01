@@ -1,5 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Firestore, collection, getDocs, orderBy, query, doc, setDoc, updateDoc, getDoc, serverTimestamp } from '@angular/fire/firestore';
+import { SalesService } from '../../services/sales.service';
+import { NotificationService } from '../../services/notification.service';
 import { RouterLink } from '@angular/router';
 import { NgFor, DecimalPipe, NgIf } from '@angular/common';
 import { NgxPaginationModule } from 'ngx-pagination';
@@ -52,6 +54,7 @@ import { FormsModule } from '@angular/forms';
                   <div class="actions">
                     <a [routerLink]="['/sales/invoice', x.id]" class="view-link">View</a>
                     <button *ngIf="x.total > (x.paid || 0) && x.status !== 'Inactive'" class="btn secondary pay-btn" (click)="openPaymentModal(x)">Pay Due</button>
+                    <button *ngIf="x.status !== 'Inactive'" class="btn danger" (click)="confirmDelete(x)">Delete</button>
                     <span *ngIf="x.status === 'Inactive'" class="inactive-text">No actions available</span>
                   </div>
                 </td>
@@ -273,6 +276,8 @@ import { FormsModule } from '@angular/forms';
 })
 export class SalesListComponent implements OnInit {
   private db = inject(Firestore);
+  private salesService = inject(SalesService);
+  private notification = inject(NotificationService);
   
   items: any[] = [];
   filteredItems: any[] = [];
@@ -354,6 +359,26 @@ export class SalesListComponent implements OnInit {
     } catch (error: any) {
       console.error('Payment processing failed:', error);
       // Add error notification here
+    }
+  }
+
+  confirmDelete(sale: any) {
+    const ok = confirm(`Delete sale ${sale.invoiceNo || sale.id}? This will mark the sale Inactive and revert stock for DIRECT items.`);
+    if (!ok) return;
+    this.deleteSale(sale);
+  }
+
+  async deleteSale(sale: any) {
+    try {
+      await this.salesService.deleteSale(sale.id);
+      const index = this.items.findIndex(i => i.id === sale.id);
+      if (index !== -1) {
+        this.items[index] = { ...this.items[index], status: 'Inactive' };
+        this.search();
+      }
+    } catch (error: any) {
+      console.error('Failed to delete sale', error);
+      this.notification.error?.(error?.message || 'Failed to delete sale');
     }
   }
 

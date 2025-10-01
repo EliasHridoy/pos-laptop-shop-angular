@@ -78,8 +78,10 @@ export class ProductsService {
   // Batch Create Products
   async addProductsBatch(products: any[]) {
     const batch = writeBatch(this.db);
-    products.forEach(p => {
-      const newDocRef = doc(collection(this.db, 'products'));
+    // Keep track of created document refs so caller can use their ids
+    const newDocRefs = products.map(() => doc(collection(this.db, 'products')));
+    products.forEach((p, idx) => {
+      const newDocRef = newDocRefs[idx];
       batch.set(newDocRef, {
         No: p.No ? Number(p.No) : null,
         Date: p.Date || new Date(),
@@ -118,6 +120,8 @@ export class ProductsService {
     try {
       await batch.commit();
       this.notification.success(`${products.length} products added successfully!`);
+      // Return created ids to caller
+      return newDocRefs.map(r => r.id);
     } catch (e) {
       this.notification.error('Failed to add products in batch.');
       throw e;

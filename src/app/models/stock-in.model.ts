@@ -15,6 +15,9 @@ export interface StockInModel {
   ROM?: string;
   ProductID?: string;
   CostPrice?: number;
+  AskingPrice?: number;
+  SockOutDate?: string;
+  SaleInvoiceNo?: string;
   Description?: string;
   Status?: ProductStatus;
 }

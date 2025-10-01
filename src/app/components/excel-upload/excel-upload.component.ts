@@ -6,6 +6,7 @@ import { ExcelData } from '../../models/excel-data.model';
 import { StockInModel } from '../../models/stock-in.model';
 import { ProductStatus } from '../../models/product-status.enum';
 import { ProductsService } from '../../services/products.service';
+import { SalesService } from '../../services/sales.service';
 
 @Component({
   selector: 'app-excel-upload',
@@ -96,6 +97,7 @@ import { ProductsService } from '../../services/products.service';
 export class ExcelUploadComponent {
   private excel = inject(UploadExcelService);
   private productsService = inject(ProductsService);
+  private salesService = inject(SalesService);
 
   allStockInRows: StockInModel[] = [];
   currentBatch: StockInModel[] = [];
@@ -130,7 +132,51 @@ export class ExcelUploadComponent {
     if (this.isSaving) return;
     this.isSaving = true;
     try {
-      await this.productsService.addProductsBatch(this.currentBatch);
+      const createdIds = (await this.productsService.addProductsBatch(this.currentBatch)) as string[];
+
+      // For any row that was imported with Status = Sold, create a sale record
+      // We treat these as DIRECT sales because the products were just created in products collection
+      const soldRows = this.currentBatch
+        .map((row, index) => ({ row, id: createdIds[index] }))
+        .filter(x => x.row.Status === ProductStatus.Sold && x.id);
+
+      for (const s of soldRows) {
+        try {
+          // build custom invoiceNo if both SockOutDate and SaleInvoiceNo are present
+          let invoiceNo: string | undefined = undefined;
+          if (s.row.SockOutDate && s.row.SaleInvoiceNo) {
+            // Normalize SockOutDate to YYYYMMDD if possible (handle YYYY-MM-DD or YYYY/MM/DD)
+            const d = String(s.row.SockOutDate).replace(/\//g, '-');
+            const parts = d.split('-').map(p => p.padStart(2, '0'));
+            if (parts.length >= 3) {
+              const y = parts[0];
+              const m = parts[1];
+              const day = parts[2];
+              invoiceNo = `INV-${y}${m}${day}-${String(s.row.SaleInvoiceNo).padStart(4, '0')}`;
+            }
+          }
+
+          await this.salesService.createSale({
+            customer: null,
+            items: [{
+              productId: s.id,
+              name: s.row.Item || '',
+              qty: 1,
+              sellPrice: Number(s.row.AskingPrice || 0),
+              costPrice: Number(s.row.CostPrice || 0),
+              description: s.row.Description || ''
+            }],
+            type: 'DIRECT',
+            note: `Imported from Excel row No ${s.row.No || ''}`,
+            paid: Number(s.row.AskingPrice || 0),
+            soldBy: undefined,
+            invoiceNo
+          });
+        } catch (err) {
+          console.error('Failed to create sale for imported sold row', s, err);
+        }
+      }
+
       this.currentPage++;
       if (this.currentPage * this.batchSize >= this.totalRows) {
         alert('All data has been saved successfully!');
@@ -176,6 +222,9 @@ export class ExcelUploadComponent {
         ROM: excelRow.ROM,
         ProductID: excelRow.ProductID,
         CostPrice: excelRow.CostPrice ? parseFloat(excelRow.CostPrice.replace(/,/g, '')) : undefined,
+        AskingPrice: excelRow.AskingPrice ? parseFloat(excelRow.AskingPrice.replace(/,/g, '')) : undefined,
+        SockOutDate: excelRow.SockOutDate,
+        SaleInvoiceNo: excelRow.SaleInvoiceNo,
         Description: description,
         Status: this.mapStatus(excelRow.Status),
       };
