@@ -17,8 +17,9 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
   standalone: true,
   imports: [FormsModule, NgFor, NgIf, DatePipe, NgxPaginationModule, DecimalPipe, ExcelUploadComponent],
   template: `
-    <h2>Products</h2>
-    <div class="grid">
+    <div class="products-page">
+      <h2 class="page-title">Products</h2>
+      <div class="grid">
       <!-- Product Details View -->
       <div class="card" *ngIf="showDetails">
         <div class="header-actions">
@@ -155,7 +156,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
           </div>
         </div>
 
-        <table class="table">
+  <table class="table products-table">
           <thead>
             <tr>
               <th>#</th>
@@ -178,7 +179,9 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
               <td>{{p.Model}}</td>
               <td>{{p.ProductID}}</td>
               <td>৳{{p.CostPrice}}</td>
-              <td>{{p.Status}}</td>
+              <td>
+                <span class="status-badge" [class.available]="p.Status === ProductStatus.Available" [class.sold]="p.Status === ProductStatus.Sold" [class.servicing]="p.Status === ProductStatus.Servicing">{{p.Status}}</span>
+              </td>
               <td class="actions">
                 <button class="btn small info" (click)="viewDetails(p)" title="View Details">
                   View
@@ -332,10 +335,12 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
           </div>
         </form>
       </div>
-
     </div>
   `,
   styles: [`
+    /* Layout wrappers */
+    .products-page { padding: 1rem 1.25rem; }
+    .page-title { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 600; color: #1f2937; }
     .filters {
       display: flex;
       gap: 1rem;
@@ -524,9 +529,72 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
       font-size: 0.9rem;
     }
 
-    .stock-in-card {
-      min-width: 0;
-    }`]
+    .stock-in-card { min-width: 0; }
+
+    /* Table enhancements */
+    .products-table thead tr { background: #f3f4f6; }
+    .products-table th { font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; }
+    .products-table td, .products-table th { padding: 0.55rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+    .products-table tbody tr:hover { background: #f9fafb; }
+    .products-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Status badges */
+    .status-badge { display: inline-block; padding: 0.25rem 0.55rem; font-size: 0.65rem; line-height: 1; border-radius: 999px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+    .status-badge.available { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .status-badge.sold { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .status-badge.servicing { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    /* Card & form styling tweaks */
+    .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.1rem 1.25rem 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02); }
+    .card + .card { margin-top: 1.5rem; }
+    .header-actions h3 { margin:0; font-size: 1.15rem; font-weight:600; }
+
+    .btn.small { padding: 0.35rem 0.6rem; font-size: 0.65rem; line-height: 1; }
+    .btn.info { background:#2563eb; color:#fff; }
+    .btn.info:hover { background:#1d4ed8; }
+
+    .stock-in-form .form-group label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; font-weight:600; color:#555; }
+    .stock-in-form .form-group input, .stock-in-form .form-group textarea, .stock-in-form .form-group select { border:1px solid #d1d5db; border-radius:6px; background:#fff; }
+    .stock-in-form .form-group input:focus, .stock-in-form .form-group textarea:focus, .stock-in-form .form-group select:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 1px #6366f1, 0 0 0 2px rgba(99,102,241,.2); }
+    .form-section { position: relative; background:#fafafa; border:1px solid #e5e7eb; border-radius:8px; padding:1rem 1rem 0.25rem; }
+    .form-section h4 { font-size: .85rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin:0 0 .75rem; color:#374151; }
+    .form-row { gap: 1rem; }
+    textarea.input { resize: vertical; }
+
+    /* Status summary refinement */
+    .status-summary { background: linear-gradient(90deg,#f3f4f6,#fff); border:1px solid #e5e7eb; }
+    .summary-item .label { font-size: .7rem; text-transform:uppercase; }
+    .summary-item .value { font-size: .85rem; font-weight:600; }
+
+    /* Pagination tweaks */
+    .pagination-container { gap:1rem; }
+    .page-size-selector label { text-transform:uppercase; font-size:.65rem; font-weight:600; }
+    .page-size-selector select { border:1px solid #d1d5db; border-radius:6px; padding: 0.25rem .5rem; }
+
+    /* Details panel */
+    .details-container { background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; }
+    .detail-item label { font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; }
+    .detail-item span { font-size:.8rem; }
+    .details-actions .btn { font-size:.7rem; }
+
+    .add-mode-selector { background:#f1f5f9; border:1px solid #e2e8f0; }
+    .add-mode-selector label { font-size:.75rem; }
+
+    /* Responsive adjustments */
+    @media (max-width: 1100px) {
+      .products-table th:nth-child(3),
+      .products-table td:nth-child(3),
+      .products-table th:nth-child(4),
+      .products-table td:nth-child(4),
+      .products-table th:nth-child(5),
+      .products-table td:nth-child(5) { display:none; }
+    }
+    @media (max-width: 800px) {
+      .filters { flex-direction: column; }
+      .header-actions { flex-direction: column; gap:.5rem; align-items:flex-start; }
+      .products-table th:nth-child(1), .products-table td:nth-child(1) { display:none; }
+    }
+  `]
 })
 export class ProductsComponent implements OnInit {
   // Component logic

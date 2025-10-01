@@ -7,13 +7,26 @@ import { StockInModel } from '../../models/stock-in.model';
 import { ProductStatus } from '../../models/product-status.enum';
 import { ProductsService } from '../../services/products.service';
 import { SalesService } from '../../services/sales.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-excel-upload',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <input type="file" accept=".xlsx,.xls" (change)="onFile($event)" [disabled]="allStockInRows.length > 0" />
+    <label class="file-picker" [class.dragover]="isDragOver" (dragover)="$event.preventDefault(); onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+      <input #fileInput type="file" accept=".xlsx,.xls" (change)="onFile($event)" [disabled]="allStockInRows.length > 0" />
+      <span class="file-btn" aria-hidden="true">
+        <!-- simple upload SVG icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle; margin-right:6px;">
+          <path d="M12 3v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M8 7l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M21 21H3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Choose Excel file
+      </span>
+      <span class="file-name" *ngIf="fileName">{{ fileName }}</span>
+    </label>
 
     <div *ngIf="currentBatch.length > 0" class="excel-preview">
       <h4>Review and Edit Data</h4>
@@ -69,35 +82,65 @@ import { SalesService } from '../../services/sales.service';
     </div>
   `,
   styles: [`
-    :host {
-      display: block;
-      max-width: 100%;
+    :host { display:block; max-width:100%; }
+    input[type=file] { margin:.5rem 0 1rem; }
+    .excel-preview { margin: 1rem 0 2rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.25rem 1.25rem; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+    .excel-preview h4 { margin:0 0 1rem; font-size:1.1rem; font-weight:600; color:#1f2937; }
+    .batch-info { display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; border:1px solid #e2e8f0; padding:.65rem .9rem; border-radius:8px; margin-bottom:1rem; font-size:.8rem; }
+    .batch-info p { margin:0; font-weight:500; color:#334155; }
+    .batch-info button { background:#2563eb; color:#fff; border:none; padding:.55rem .9rem; font-size:.7rem; font-weight:600; border-radius:6px; cursor:pointer; letter-spacing:.5px; text-transform:uppercase; }
+    .batch-info button[disabled] { opacity:.5; cursor:not-allowed; }
+    .batch-info button:not([disabled]):hover { background:#1d4ed8; }
+
+    .table-responsive { width:100%; overflow:auto; max-height:70vh; border:1px solid #e2e8f0; border-radius:10px; box-sizing:border-box; background:#fff; }
+    .table { width:100%; border-collapse:separate; border-spacing:0; table-layout:auto; white-space:nowrap; font-size:.72rem; }
+    .table thead th { position:sticky; top:0; background:linear-gradient(#f8fafc,#f1f5f9); z-index:5; box-shadow:0 2px 0 #e2e8f0; text-transform:uppercase; font-size:.6rem; letter-spacing:.06em; font-weight:600; padding:.55rem .65rem; color:#334155; border-bottom:1px solid #e2e8f0; }
+    .table tbody td { background:#fff; border-bottom:1px solid #f1f5f9; padding:.4rem .5rem; vertical-align:middle; }
+    .table tbody tr:nth-child(even) td { background:#f8fafc; }
+    .table tbody tr:hover td { background:#eef2ff; }
+    .table th, .table td { min-width:160px; }
+
+    .form-control { width:100%; padding:.35rem .55rem; box-sizing:border-box; border:1px solid #cbd5e1; background:#ffffff; font-size:.65rem; border-radius:6px; transition:border-color .15s, box-shadow .15s; }
+    .form-control:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 1px #6366f1, 0 0 0 3px rgba(99,102,241,.25); }
+    .form-control[disabled] { background:#f1f5f9; cursor:not-allowed; }
+    select.form-control { padding:.35rem .4rem; }
+
+    /* Narrow columns for numbers */
+    td:first-child input { text-align:center; }
+    td:nth-child(12) input { text-align:right; }
+
+    /* Scrollbar styling (WebKit) */
+    .table-responsive::-webkit-scrollbar { height:10px; width:10px; }
+    .table-responsive::-webkit-scrollbar-track { background:#f1f5f9; }
+    .table-responsive::-webkit-scrollbar-thumb { background:#94a3b8; border-radius:10px; }
+    .table-responsive::-webkit-scrollbar-thumb:hover { background:#64748b; }
+
+    @media (max-width: 1200px) {
+      .table th, .table td { min-width:140px; }
     }
-    .excel-preview { margin: 1rem 0; }
-    .table-responsive {
-      width: 100%;
-      overflow: auto; /* Enables both vertical and horizontal scrolling */
-      max-height: 70vh; /* Limit height to 70% of the viewport height */
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
+    @media (max-width: 900px) {
+      .table th:nth-child(2), .table td:nth-child(2), /* Date */
+      .table th:nth-child(5), .table td:nth-child(5), /* Series */
+      .table th:nth-child(7), .table td:nth-child(7), /* Processor */
+      .table th:nth-child(8), .table td:nth-child(8) /* Generation */ { display:none; }
     }
-    .batch-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .form-control { width: 100%; padding: 0.375rem 0.75rem; box-sizing: border-box; }
-    .table { table-layout: auto; white-space: nowrap; }
-    .table th, .table td { min-width: 180px; vertical-align: middle; }
-    .table th {
-      position: sticky;
-      top: 0;
-      background: #f8f9fa; /* Light background to cover content during scroll */
-      z-index: 1;
-    }
+    /* File picker styles */
+    .file-picker { display:flex; align-items:center; gap:.75rem; cursor:pointer; }
+    .file-picker input[type=file] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .file-btn { background:#10b981; color:#fff; padding:.55rem .9rem; border-radius:8px; font-weight:700; font-size:.8rem; border:none; box-shadow:0 1px 0 rgba(0,0,0,.04); }
+  .file-picker[disabled] .file-btn, .file-picker input[disabled] + .file-btn { opacity:.5; cursor:not-allowed; }
+  .file-picker.dragover { background: linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03)); border-radius:8px; padding:.5rem .6rem; }
+  .file-picker.dragover .file-btn { background:#0ea5e9; }
+    .file-name { font-size:.85rem; color:#334155; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   `]
 })
 export class ExcelUploadComponent {
   private excel = inject(UploadExcelService);
   private productsService = inject(ProductsService);
   private salesService = inject(SalesService);
+  private notification = inject(NotificationService);
+  fileName = '';
+  isDragOver = false;
 
   allStockInRows: StockInModel[] = [];
   currentBatch: StockInModel[] = [];
@@ -112,14 +155,47 @@ export class ExcelUploadComponent {
     const input = evt.target as HTMLInputElement | null;
     const file = input?.files?.item(0);
     if (!file) return;
+    await this.handleFile(file);
+  }
 
-    const data = await this.excel.readFileToJson(file);
-    if (data.length > 0) {
-      const firstSheet = data[0];
-      this.allStockInRows = this.transformToStockIn(firstSheet.rows);
-      this.totalRows = this.allStockInRows.length;
-      this.loadCurrentBatch();
+  async handleFile(file: File) {
+    try {
+      this.fileName = file.name;
+      const data = await this.excel.readFileToJson(file);
+      if (data.length > 0) {
+        const firstSheet = data[0];
+        this.allStockInRows = this.transformToStockIn(firstSheet.rows);
+        this.totalRows = this.allStockInRows.length;
+        this.loadCurrentBatch();
+        this.notification.success('File loaded. Review the batch before saving.');
+      } else {
+        this.notification.error('No data found in the selected file.');
+      }
+    } catch (err: any) {
+      console.error('Failed to read file', err);
+      this.notification.error(err?.message || 'Failed to read file');
     }
+  }
+
+  onDragOver(evt: DragEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(evt: DragEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    this.isDragOver = false;
+  }
+
+  async onDrop(evt: DragEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    this.isDragOver = false;
+    const file = evt.dataTransfer?.files?.[0];
+    if (!file) return;
+    await this.handleFile(file);
   }
 
   loadCurrentBatch() {
@@ -179,14 +255,14 @@ export class ExcelUploadComponent {
 
       this.currentPage++;
       if (this.currentPage * this.batchSize >= this.totalRows) {
-        alert('All data has been saved successfully!');
+        this.notification.success('All data has been saved successfully!');
         this.reset();
       } else {
         this.loadCurrentBatch();
       }
     } catch (error) {
       console.error('Failed to save batch:', error);
-      alert('There was an error saving the data. Please check the console and try again.');
+      this.notification.error('There was an error saving the data. Please check the console and try again.');
     } finally {
       this.isSaving = false;
     }
@@ -198,8 +274,9 @@ export class ExcelUploadComponent {
     this.currentPage = 0;
     this.totalRows = 0;
     // Reset file input
-    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const input = document.querySelector('input[type=file]') as HTMLInputElement | null;
     if (input) input.value = '';
+    this.fileName = '';
   }
 
   private transformToStockIn(data: ExcelData[]): StockInModel[] {
