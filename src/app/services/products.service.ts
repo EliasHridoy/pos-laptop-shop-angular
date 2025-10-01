@@ -49,7 +49,7 @@ export class ProductsService {
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
         Description: p.Description || '',
-        Status: p.Status || 'Available',
+  Status: p.Status || ProductStatus.Available,
         
         // Generated Fields
         details: this.generateProductDescription(p),
@@ -100,7 +100,7 @@ export class ProductsService {
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
         Description: p.Description || '',
-        Status: p.Status || 'Available',
+  Status: p.Status || ProductStatus.Available,
         details: this.generateProductDescription(p),
         keywords: [
           p.Item,
@@ -157,7 +157,7 @@ export class ProductsService {
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
         Description: p.Description || '',
-        Status: p.Status || 'Available',
+  Status: p.Status || ProductStatus.Available,
         
         // Generated Fields
         details: this.generateProductDescription(p),
@@ -197,7 +197,7 @@ export class ProductsService {
     // Search by both Item and nameLower for backwards compatibility
     const constraints: any[] = [];
     if (onlyAvailable) {
-      constraints.push(where('Status', '==', 'Available'));
+      constraints.push(where('Status', '==', ProductStatus.Available));
     }
 
     const byItem = query(collection(this.db, 'products'), 
@@ -228,7 +228,7 @@ export class ProductsService {
     const t = token.toLowerCase();
     const constraints: any[] = [where('keywords', 'array-contains', t)];
     if (onlyAvailable) {
-      constraints.push(where('Status', '==', 'Available'));
+      constraints.push(where('Status', '==', ProductStatus.Available));
     }
     const q = query(collection(this.db, 'products'), ...constraints);
     const snap = await getDocs(q);

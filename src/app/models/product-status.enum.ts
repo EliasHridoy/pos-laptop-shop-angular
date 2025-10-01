@@ -1,5 +1,6 @@
 export enum ProductStatus {
   Available = 'Available',
   Sold = 'Sold',
-  Servicing = 'Servicing'
+  Servicing = 'Servicing',
+  Return = 'Return'
 }
