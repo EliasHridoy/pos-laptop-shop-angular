@@ -14,7 +14,8 @@ import { NotificationService } from '../../services/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <label class="file-picker" [class.dragover]="isDragOver" (dragover)="$event.preventDefault(); onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+    <div class="file-row">
+      <label class="file-picker" [class.dragover]="isDragOver" [class.disabled]="allStockInRows.length > 0" (dragover)="$event.preventDefault(); onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
       <input #fileInput type="file" accept=".xlsx,.xls" (change)="onFile($event)" [disabled]="allStockInRows.length > 0" />
       <span class="file-btn" aria-hidden="true">
         <!-- simple upload SVG icon -->
@@ -26,7 +27,11 @@ import { NotificationService } from '../../services/notification.service';
         Choose Excel file
       </span>
       <span class="file-name" *ngIf="fileName">{{ fileName }}</span>
-    </label>
+      </label>
+
+      <!-- Sample file download -->
+      <a class="sample-btn" href="assets/Laptop%20Core%20Technology%20sample%20data.xlsx" download="Laptop Core Technology sample data.xlsx" title="Download sample Excel">Download sample Excel</a>
+    </div>
 
     <div *ngIf="currentBatch.length > 0" class="excel-preview">
       <h4>Review and Edit Data</h4>
@@ -127,11 +132,15 @@ import { NotificationService } from '../../services/notification.service';
     /* File picker styles */
     .file-picker { display:flex; align-items:center; gap:.75rem; cursor:pointer; }
     .file-picker input[type=file] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
-    .file-btn { background:#10b981; color:#fff; padding:.55rem .9rem; border-radius:8px; font-weight:700; font-size:.8rem; border:none; box-shadow:0 1px 0 rgba(0,0,0,.04); }
-  .file-picker[disabled] .file-btn, .file-picker input[disabled] + .file-btn { opacity:.5; cursor:not-allowed; }
+    .file-btn { background:#10b981; color:#fff; padding:.55rem .9rem; border-radius:8px; font-weight:700; font-size:.8rem; border:none; box-shadow:0 1px 0 rgba(0,0,0,.04); display:inline-flex; align-items:center; }
+    .file-btn:focus { outline: 2px solid rgba(99,102,241,.15); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .file-picker[disabled] .file-btn, .file-picker input[disabled] + .file-btn, .file-picker.disabled { opacity:.5; cursor:not-allowed; }
   .file-picker.dragover { background: linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03)); border-radius:8px; padding:.5rem .6rem; }
   .file-picker.dragover .file-btn { background:#0ea5e9; }
     .file-name { font-size:.85rem; color:#334155; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-row { display:flex; gap:1rem; align-items:center; margin-bottom:.75rem; }
+  .sample-btn { display:inline-block; background:#f3f4f6; color:#374151; padding:.5rem .8rem; border-radius:8px; text-decoration:none; font-weight:600; border:1px solid #e5e7eb; }
+  .sample-btn:hover { background:#e6eefb; color:#1e3a8a; }
   `]
 })
 export class ExcelUploadComponent {
@@ -141,6 +150,8 @@ export class ExcelUploadComponent {
   private notification = inject(NotificationService);
   fileName = '';
   isDragOver = false;
+  // maximum file size allowed (bytes)
+  readonly maxFileSize = 10 * 1024 * 1024; // 10 MB
 
   allStockInRows: StockInModel[] = [];
   currentBatch: StockInModel[] = [];
@@ -160,6 +171,23 @@ export class ExcelUploadComponent {
 
   async handleFile(file: File) {
     try {
+      // Basic validations
+      const name = file.name || '';
+      const ext = name.split('.').pop()?.toLowerCase() || '';
+      const allowed = ['xlsx', 'xls'];
+      if (!allowed.includes(ext)) {
+        this.clearFileInput();
+        this.notification.error('Unsupported file type. Please upload an .xlsx or .xls file.');
+        return;
+      }
+
+      if (file.size > this.maxFileSize) {
+        const allowedMB = (this.maxFileSize / (1024 * 1024)).toFixed(0);
+        this.clearFileInput();
+        this.notification.error(`File is too large. Maximum allowed size is ${allowedMB} MB.`);
+        return;
+      }
+
       this.fileName = file.name;
       const data = await this.excel.readFileToJson(file);
       if (data.length > 0) {
@@ -169,12 +197,20 @@ export class ExcelUploadComponent {
         this.loadCurrentBatch();
         this.notification.success('File loaded. Review the batch before saving.');
       } else {
+        this.clearFileInput();
         this.notification.error('No data found in the selected file.');
       }
     } catch (err: any) {
       console.error('Failed to read file', err);
+      this.clearFileInput();
       this.notification.error(err?.message || 'Failed to read file');
     }
+  }
+
+  private clearFileInput() {
+    const input = document.querySelector('input[type=file]') as HTMLInputElement | null;
+    if (input) input.value = '';
+    this.fileName = '';
   }
 
   onDragOver(evt: DragEvent) {

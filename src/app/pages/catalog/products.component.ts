@@ -338,9 +338,9 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
     </div>
   `,
   styles: [`
-    /* Layout wrappers */
-    .products-page { padding: 1rem 1.25rem; }
-    .page-title { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 600; color: #1f2937; }
+  /* Component-specific styles; global tokens are available in src/styles.css */
+  .products-page { padding: 1rem 1.25rem; }
+  .page-title { margin: 0 0 1rem; font-size: 1.75rem; font-weight: 600; color: #1f2937; }
     .filters {
       display: flex;
       gap: 1rem;

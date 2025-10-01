@@ -183,11 +183,8 @@ import { ProductStatus } from '../../models/product-status.enum';
     </div>
   `,
   styles: [`
-    .page-container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+  /* Local layout styles; global tokens and utilities are provided in src/styles.css */
+  .page-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
 
     .page-header {
       background: #fff;

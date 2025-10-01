@@ -95,11 +95,8 @@ import { FormsModule } from '@angular/forms';
     </div>
   `,
   styles: [`
-    .sales-list-container {
-      padding: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
-    }
+  /* Local layout and component styles; global tokens provided in src/styles.css */
+  .sales-list-container { padding: 20px; max-width: 1400px; margin: 0 auto; }
 
     .page-header {
       background: #fff;
