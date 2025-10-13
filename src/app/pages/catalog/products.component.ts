@@ -26,7 +26,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
           <h3>Product Details</h3>
           <button class="btn secondary" (click)="closeDetails()">Close</button>
         </div>
-        
+
         <div class="details-container" *ngIf="selectedProduct">
           <!-- Basic Information -->
           <div class="form-section">
@@ -135,7 +135,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
             <input class="input" placeholder="Search by name/keyword" [(ngModel)]="q" (change)="search()" />
             <button class="btn secondary" (click)="search()">Search</button>
           </div>
-          
+
           <div class="status-filter">
             <select class="input" [(ngModel)]="selectedStatus" (change)="filterByStatus()">
               <option [ngValue]="null">All Status</option>
@@ -180,7 +180,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
               <td>{{p.ProductID}}</td>
               <td>৳{{p.CostPrice}}</td>
               <td>
-                <span class="status-badge" [class.available]="p.Status === ProductStatus.Available" [class.sold]="p.Status === ProductStatus.Sold" [class.servicing]="p.Status === ProductStatus.Servicing">{{p.Status}}</span>
+                <span class="status-badge" [class]="getStatusClass(p.Status)">{{p.Status}}</span>
               </td>
               <td class="actions">
                 <button class="btn small info" (click)="viewDetails(p)" title="View Details">
@@ -321,9 +321,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
               <div class="form-group">
                 <label>Status</label>
                 <select class="input" [(ngModel)]="form.Status" name="status" required>
-                  <option [value]="ProductStatus.Available">Available</option>
-                  <option [value]="ProductStatus.Sold">Sold</option>
-                  <option [value]="ProductStatus.Servicing">Servicing</option>
+                  <option *ngFor="let status of statusOptions" [value]="status">{{status}}</option>
                 </select>
               </div>
             </div>
@@ -392,7 +390,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
       display: flex;
       gap: 0.5rem;
     }
-    
+
     .actions button {
       min-width: 32px;
       height: 32px;
@@ -543,6 +541,7 @@ import { ExcelUploadComponent } from '../../components/excel-upload/excel-upload
     .status-badge.available { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
     .status-badge.sold { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
     .status-badge.servicing { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-badge.return { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 
     /* Card & form styling tweaks */
     .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.1rem 1.25rem 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02); }
@@ -609,6 +608,10 @@ export class ProductsComponent implements OnInit {
   totalCost = 0;
   addMode: 'regular' | 'batch' = 'regular';
 
+  getStatusClass(status: string): string {
+    return `status-badge ${status.toLowerCase()}`;
+  }
+
   form: StockInModel = {
     No: undefined,
     Date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD format for input[type="date"]
@@ -641,7 +644,7 @@ export class ProductsComponent implements OnInit {
   currentPage = 1;
   itemsPerPage = 10; // Default to 10 items per page
   totalItems = 0;
-  
+
   // Available page sizes
   readonly pageSizes = [10, 50, 100, 500];
 
@@ -773,7 +776,7 @@ export class ProductsComponent implements OnInit {
       // If there's a search query, clear it and reset the search
       this.q = '';
     }
-    
+
     const result = await this.svc.getProductsByStatus(this.selectedStatus);
     this.items = result.products;
     this.totalItems = result.count;
@@ -785,7 +788,7 @@ export class ProductsComponent implements OnInit {
   async search() {
     // Reset status filter when searching
     this.selectedStatus = null;
-    
+
     const nameHits = await this.svc.searchByName(this.q);
     console.log('Name hits:', nameHits);
 

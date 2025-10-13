@@ -16,8 +16,11 @@ export interface StockInModel {
   ProductID?: string;
   CostPrice?: number;
   AskingPrice?: number;
+  Revenue?: number;
+  NetRevenue?: number;
   SockOutDate?: string;
   SaleInvoiceNo?: string;
   Description?: string;
   Status?: ProductStatus;
+  FeedBack?: string;
 }

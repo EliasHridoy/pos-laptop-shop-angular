@@ -58,6 +58,12 @@ import { NotificationService } from '../../services/notification.service';
               <th>Cost Price</th>
               <th>Description</th>
               <th>Status</th>
+              <th>Asking Price</th>
+              <th>Revenue</th>
+              <th>Net Revenue</th>
+              <th>Stock Out Date</th>
+              <th>Sale Invoice No</th>
+              <th>Feedback</th>
             </tr>
           </thead>
           <tbody>
@@ -80,6 +86,12 @@ import { NotificationService } from '../../services/notification.service';
                   <option *ngFor="let status of productStatusValues" [value]="status">{{ status }}</option>
                 </select>
               </td>
+              <td><input type="number" [(ngModel)]="row.AskingPrice" class="form-control" /></td>
+              <td><input type="number" [(ngModel)]="row.Revenue" class="form-control" /></td>
+              <td><input type="number" [(ngModel)]="row.NetRevenue" class="form-control" /></td>
+              <td><input [(ngModel)]="row.SockOutDate" class="form-control" /></td>
+              <td><input [(ngModel)]="row.SaleInvoiceNo" class="form-control" /></td>
+              <td><input [(ngModel)]="row.FeedBack" class="form-control" /></td>
             </tr>
           </tbody>
         </table>
@@ -252,41 +264,41 @@ export class ExcelUploadComponent {
         .map((row, index) => ({ row, id: createdIds[index] }))
         .filter(x => x.row.Status === ProductStatus.Sold && x.id);
 
-      for (const s of soldRows) {
-        try {
-          // build custom invoiceNo if both SockOutDate and SaleInvoiceNo are present
-          let invoiceNo: string | undefined = undefined;
-          if (s.row.SockOutDate && s.row.SaleInvoiceNo) {
-            // Normalize SockOutDate to YYYYMMDD if possible (handle YYYY-MM-DD or YYYY/MM/DD)
-            const d = String(s.row.SockOutDate).replace(/\//g, '-');
-            const parts = d.split('-').map(p => p.padStart(2, '0'));
-            if (parts.length >= 3) {
-              const y = parts[0];
-              const m = parts[1];
-              const day = parts[2];
-              invoiceNo = `INV-${y}${m}${day}-${String(s.row.SaleInvoiceNo).padStart(4, '0')}`;
-            }
+      const salePayloads = soldRows.map(s => {
+        // build custom invoiceNo if both SockOutDate and SaleInvoiceNo are present
+        let invoiceNo: string | undefined = undefined;
+        if (s.row.SockOutDate && s.row.SaleInvoiceNo) {
+          // Normalize SockOutDate to YYYYMMDD if possible (handle YYYY-MM-DD or YYYY/MM/DD)
+          const d = String(s.row.SockOutDate).replace(/\//g, '-');
+          const parts = d.split('-').map(p => p.padStart(2, '0'));
+          if (parts.length >= 3) {
+            const y = parts[0];
+            const m = parts[1];
+            const day = parts[2];
+            invoiceNo = `INV-${y}${m}${day}-${String(s.row.SaleInvoiceNo).padStart(4, '0')}`;
           }
-
-          await this.salesService.createSale({
-            customer: null,
-            items: [{
-              productId: s.id,
-              name: s.row.Item || '',
-              qty: 1,
-              sellPrice: Number(s.row.AskingPrice || 0),
-              costPrice: Number(s.row.CostPrice || 0),
-              description: s.row.Description || ''
-            }],
-            type: 'DIRECT',
-            note: `Imported from Excel row No ${s.row.No || ''}`,
-            paid: Number(s.row.AskingPrice || 0),
-            soldBy: undefined,
-            invoiceNo
-          });
-        } catch (err) {
-          console.error('Failed to create sale for imported sold row', s, err);
         }
+
+        return {
+          customer: null,
+          items: [{
+            productId: s.row.ProductID,
+            name: s.row.Item || '',
+            qty: 1,
+            sellPrice: Number(s.row.Revenue || 0),
+            costPrice: Number(s.row.CostPrice || 0),
+            description: s.row.Description || ''
+          }],
+          type: 'DIRECT' as const,
+          note: `Imported from Excel row No ${s.row.No || ''}`,
+          paid: Number(s.row.Revenue || 0),
+          soldBy: undefined,
+          invoiceNo
+        };
+      });
+
+      if (salePayloads.length > 0) {
+        await this.salesService.createSalesBulk(salePayloads);
       }
 
       this.currentPage++;
@@ -336,10 +348,13 @@ export class ExcelUploadComponent {
         ProductID: excelRow.ProductID,
         CostPrice: excelRow.CostPrice ? parseFloat(excelRow.CostPrice.replace(/,/g, '')) : undefined,
         AskingPrice: excelRow.AskingPrice ? parseFloat(excelRow.AskingPrice.replace(/,/g, '')) : undefined,
+        Revenue: excelRow.Revenue ? parseFloat(excelRow.Revenue.replace(/,/g, '')) : undefined,
+        NetRevenue: excelRow.NetRevenue ? parseFloat(excelRow.NetRevenue.replace(/,/g, '')) : undefined,
         SockOutDate: excelRow.SockOutDate,
         SaleInvoiceNo: excelRow.SaleInvoiceNo,
         Description: description,
         Status: this.mapStatus(excelRow.Status),
+        FeedBack: excelRow.FeedBack,
       };
     });
   }

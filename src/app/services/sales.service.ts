@@ -25,7 +25,7 @@ export class SalesService {
     soldBy?: { uid: string, displayName: string | null, email: string | null },
     // Optional: if provided, use this invoiceNo instead of generating a new one via counters
     invoiceNo?: string
-  }) {
+  }, silent: boolean = false) {
     if (!payload.items?.length) throw new Error('No items');
     try {
       const saleId: SaleIdResponse = await runTransaction(this.db, async (tx) => {
@@ -44,7 +44,7 @@ export class SalesService {
             tx.get(invoiceCounterRef),
             ...payload.items.map(line => tx.get(doc(this.db, 'products', line.productId)))
           ]);
-          
+
           invoiceCounterSnap = reads[0];
           const productSnaps = reads.slice(1);
 
@@ -63,7 +63,7 @@ export class SalesService {
         } else {
           // For INSTANT sales, only read counter (if needed)
           invoiceCounterSnap = await tx.get(invoiceCounterRef);
-          
+
           // Transform instant items to match the structure
           productReads = payload.items.map((item, index) => ({
             ref: null, // No database reference for instant products
@@ -109,7 +109,7 @@ export class SalesService {
             productName = data.name;
             productDescription = data.description;
             productId = data.productId;
-            
+
             console.log("direct sale item data", data);
           }
 
@@ -179,12 +179,32 @@ export class SalesService {
         return { id: saleRef.id, invoiceNo };
       });
 
-      this.notification.success(`Sale created successfully! Invoice: ${saleId.invoiceNo}`);
+      if (!silent) {
+        this.notification.success(`Sale created successfully! Invoice: ${saleId.invoiceNo}`);
+      }
       return saleId.id;
     } catch (error: any) {
       this.notification.error(error.message || 'Failed to create sale.');
       throw error;
     }
+  }
+
+  async createSalesBulk(payloads: Array<{
+    customer?: any,
+    items: any[],
+    type: 'DIRECT' | 'INSTANT',
+    note?: string,
+    paid?: number,
+    soldBy?: { uid: string, displayName: string | null, email: string | null },
+    invoiceNo?: string
+  }>) {
+    const results: string[] = [];
+    for (const payload of payloads) {
+      const id = await this.createSale(payload, true); // silent
+      results.push(id);
+    }
+    this.notification.success(`${results.length} sales created successfully!`);
+    return results;
   }
 
   async findSaleByInvoice(invoiceNo: string) {

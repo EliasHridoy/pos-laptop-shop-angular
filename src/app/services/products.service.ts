@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, 
+import { Firestore, addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
          orderBy, query, runTransaction, where, startAt, endAt, serverTimestamp, writeBatch } from '@angular/fire/firestore';
 import { NotificationService } from './notification.service';
 import { ProductStatus } from '../models/product-status.enum';
@@ -31,26 +31,26 @@ export class ProductsService {
         Item: p.Item || '',
         name: p.Item || '', // For backward compatibility
         nameLower: (p.Item || '').toLowerCase(),
-        
+
         // Category Information
         Brand: p.Brand || '',
         categoryId: p.categoryId || '',
         Series: p.Series || '',
         subcategoryId: p.subcategoryId || '',
-        
+
         // Specifications
         Model: p.Model || '',
         Processor: p.Processor || '',
         Genaration: p.Genaration || '',
         RAM: p.RAM || '',
         ROM: p.ROM || '',
-        
+
         // Product Details
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
         Description: p.Description || '',
   Status: p.Status || ProductStatus.Available,
-        
+
         // Generated Fields
         details: this.generateProductDescription(p),
         keywords: [
@@ -64,7 +64,7 @@ export class ProductsService {
           p.ROM,
           p.ProductID
         ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase()),
-        
+
         // Metadata
         createdAt: serverTimestamp()
       });
@@ -79,7 +79,7 @@ export class ProductsService {
   async addProductsBatch(products: any[]) {
     const batch = writeBatch(this.db);
     // Keep track of created document refs so caller can use their ids
-    const newDocRefs = products.map(() => doc(collection(this.db, 'products')));
+    const newDocRefs = products.map(p => doc(this.db, 'products', p.ProductID));
     products.forEach((p, idx) => {
       const newDocRef = newDocRefs[idx];
       batch.set(newDocRef, {
@@ -139,26 +139,26 @@ export class ProductsService {
         Item: p.Item || '',
         name: p.Item || '', // For backward compatibility
         nameLower: (p.Item || '').toLowerCase(),
-        
+
         // Category Information
         Brand: p.Brand || '',
         categoryId: p.categoryId || '',
         Series: p.Series || '',
         subcategoryId: p.subcategoryId || '',
-        
+
         // Specifications
         Model: p.Model || '',
         Processor: p.Processor || '',
         Genaration: p.Genaration || '',
         RAM: p.RAM || '',
         ROM: p.ROM || '',
-        
+
         // Product Details
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
         Description: p.Description || '',
   Status: p.Status || ProductStatus.Available,
-        
+
         // Generated Fields
         details: this.generateProductDescription(p),
         keywords: [
@@ -200,13 +200,13 @@ export class ProductsService {
       constraints.push(where('Status', '==', ProductStatus.Available));
     }
 
-    const byItem = query(collection(this.db, 'products'), 
+    const byItem = query(collection(this.db, 'products'),
       ...constraints,
       orderBy('Item'), startAt(prefix), endAt(prefix + '\uf8ff'));
-    const byName = query(collection(this.db, 'products'), 
+    const byName = query(collection(this.db, 'products'),
       ...constraints,
       orderBy('nameLower'), startAt(low), endAt(low + '\uf8ff'));
-    
+
     const [snapItem, snapName] = await Promise.all([
       getDocs(byItem),
       getDocs(byName)
@@ -268,13 +268,13 @@ export class ProductsService {
           orderBy('Date', 'desc')
         );
       }
-      
+
       const snap = await getDocs(q);
       const products = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-      
+
       // Calculate total cost
       const totalCost = products.reduce((sum, product) => sum + (Number(product.CostPrice) || 0), 0);
-      
+
       return {
         products,
         totalCost,
