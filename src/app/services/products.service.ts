@@ -2,12 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { Firestore, addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
          orderBy, query, runTransaction, where, startAt, endAt, serverTimestamp, writeBatch } from '@angular/fire/firestore';
 import { NotificationService } from './notification.service';
+import { CountersService } from './counters.service';
 import { ProductStatus } from '../models/product-status.enum';
 
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
   private db = inject(Firestore);
   private notification = inject(NotificationService);
+  private counters = inject(CountersService);
 
   // Helper function to generate consistent product description
   private generateProductDescription(p: any): string {
@@ -24,9 +26,12 @@ export class ProductsService {
   // Create Product
   async createProduct(p: any) {
     try {
+      // Auto-generate serial number if not provided
+      const serialNo = p.No ? Number(p.No) : await this.counters.nextSerialNo();
+
       const ref = await addDoc(collection(this.db, 'products'), {
         // Basic Information
-        No: p.No ? Number(p.No) : null,
+        No: serialNo,
         Date: p.Date || new Date(),
         Item: p.Item || '',
         name: p.Item || '', // For backward compatibility
@@ -77,13 +82,20 @@ export class ProductsService {
 
   // Batch Create Products
   async addProductsBatch(products: any[]) {
+    // Generate serial numbers for products that don't have No
+    for (let i = 0; i < products.length; i++) {
+      if (!products[i].No) {
+        products[i].No = await this.counters.nextSerialNo();
+      }
+    }
+
     const batch = writeBatch(this.db);
     // Keep track of created document refs so caller can use their ids
-    const newDocRefs = products.map(p => doc(this.db, 'products', p.ProductID));
+    const newDocRefs = products.map(() => doc(collection(this.db, 'products')));
     products.forEach((p, idx) => {
       const newDocRef = newDocRefs[idx];
       batch.set(newDocRef, {
-        No: p.No ? Number(p.No) : null,
+        No: Number(p.No),
         Date: p.Date || new Date(),
         Item: p.Item || '',
         name: p.Item || '',

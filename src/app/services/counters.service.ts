@@ -24,17 +24,44 @@ export class CountersService {
     return invoiceNo;
   }
 
+  getSerialCounterRef() {
+    return doc(this.db, 'counters', 'serial');
+  }
+
+  async nextSerialNo() {
+    const ref = this.getSerialCounterRef();
+    const id = await runTransaction(this.db, async (tx) => {
+      const snap = await tx.get(ref);
+      return this.calculateNextSerialNumber(tx, ref, snap);
+    });
+    return id;
+  }
+
+  calculateNextSerialNumber(tx: any, ref: any, snap: any) {
+    const { serialNo, newCounterData } = this.getNewSerialNumberAndCounter(snap);
+    tx.set(ref, newCounterData, { merge: true });
+    return serialNo;
+  }
+
+  getNewSerialNumberAndCounter(snap: DocumentSnapshot): { serialNo: number, newCounterData: any } {
+    let seq = 1;
+    if (snap.exists()) {
+      const d: any = snap.data();
+      seq = (d.seq || 0) + 1;
+    }
+    const newCounterData = { seq, updatedAt: serverTimestamp() };
+    return { serialNo: seq, newCounterData };
+  }
+
   getNewInvoiceNumberAndCounter(snap: DocumentSnapshot, prefix = 'INV'): { invoiceNo: string, newCounterData: any } {
     const dt = new Date();
     const ymd = `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
     let seq = 1;
-    let lastDate = ymd;
     if (snap.exists()) {
       const d: any = snap.data();
-      lastDate = d.lastDate || ymd;
-      seq = (lastDate === ymd ? (d.seq || 0) + 1 : 1);
+      seq = (d.seq || 0) + 1;
     }
-    const newCounterData = { lastDate: ymd, seq, updatedAt: serverTimestamp() };
+    const newCounterData = { seq, updatedAt: serverTimestamp() };
     const invoiceNo = `${prefix}-${ymd}-${String(seq).padStart(4, '0')}`;
     return { invoiceNo, newCounterData };
   }

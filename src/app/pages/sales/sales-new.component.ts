@@ -21,11 +21,11 @@ import { ProductStatus } from '../../models/product-status.enum';
         <h2>New Sale</h2>
         <div class="mode-selector">
           <label class="radio-option">
-            <input type="radio" name="mode" value="DIRECT" [(ngModel)]="mode" (change)="onModeChange()"> 
+            <input type="radio" name="mode" value="DIRECT" [(ngModel)]="mode" (change)="onModeChange()">
             <span>Direct Sale</span>
           </label>
           <label class="radio-option">
-            <input type="radio" name="mode" value="INSTANT" [(ngModel)]="mode" (change)="onModeChange()"> 
+            <input type="radio" name="mode" value="INSTANT" [(ngModel)]="mode" (change)="onModeChange()">
             <span>Instant Sale</span>
           </label>
         </div>
@@ -60,7 +60,7 @@ import { ProductStatus } from '../../models/product-status.enum';
               </div>
             </div>
           </div>
-          
+
           <!-- Direct Sale - Product Search -->
           <div class="product-section" *ngIf="mode === 'DIRECT'">
             <div class="section-header">
@@ -75,7 +75,7 @@ import { ProductStatus } from '../../models/product-status.enum';
               <h3>Product Information</h3>
               <button class="btn primary" (click)="showProductForm = true" *ngIf="!showProductForm">Add Product</button>
             </div>
-            
+
             <div class="instant-product-form" *ngIf="showProductForm">
               <form (submit)="addInstantProduct()" class="product-form">
                 <!-- Basic Information -->
@@ -174,10 +174,10 @@ import { ProductStatus } from '../../models/product-status.enum';
         </div>
       </div>
 
-      <app-floating-cart 
-        [cart]="cart" 
-        (cartChange)="cart = $event" 
-        (clear)="cart=[]" 
+      <app-floating-cart
+        [cart]="cart"
+        (cartChange)="cart = $event"
+        (clear)="cart=[]"
         (checkout)="checkout($event)">
       </app-floating-cart>
     </div>
@@ -383,7 +383,7 @@ export class SalesNewComponent implements OnInit {
   sellPrice = 0;
   categories: any[] = [];
   subcategories: any[] = [];
-  
+
   productForm: StockInModel = {
     Item: 'Laptop',
     Brand: '',
@@ -455,13 +455,13 @@ export class SalesNewComponent implements OnInit {
 
     // Generate a unique temporary ID for instant products
     const tempId = 'instant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
+
     // Create product name for cart display
     const productName = `${this.productForm.Brand} ${this.productForm.Series} ${this.productForm.Model}`;
-    
+
     // Generate description using the same logic as products service
     const generatedDescription = this.generateProductDescription(this.productForm);
-    
+
     const cartItem = {
       id: tempId,
       isInstant: true,
@@ -566,7 +566,7 @@ export class SalesNewComponent implements OnInit {
       this.notification.success('Item already in cart');
       return;
     }
-    this.cart.push({ 
+    this.cart.push({
       id: p.id,
       productId: p.ProductID,
       name: p.name || p.Item,
@@ -577,7 +577,7 @@ export class SalesNewComponent implements OnInit {
       model: p.Model,
       ram: p.RAM,
       rom: p.ROM,
-      qty: 1, 
+      qty: 1,
       sellPrice: p.defaultSellPrice || 0
     });
   }
@@ -604,7 +604,7 @@ export class SalesNewComponent implements OnInit {
       this.notification.error(error);
       return;
     }
-    
+
     const currentUser = await new Promise<any>(resolve => {
       const subscription = this.auth.user$.subscribe(user => {
         resolve(user);
@@ -613,16 +613,16 @@ export class SalesNewComponent implements OnInit {
     });
 
     let items: any[];
-    
+
     if (this.mode === 'DIRECT') {
       // For direct sales, ensure all required fields are included
-      items = data.cart.map(c => ({ 
-        productId: c.productId || c.id,
+      items = data.cart.map(c => ({
+        productId: c.id,  // Use the Firestore document ID
         qty: +c.qty,
         name: c.name,
         description: c.description, // Use existing product details
         costPrice: c.costPrice || 0,
-        sellPrice: +c.sellPrice 
+        sellPrice: +c.sellPrice
       }));
     } else {
       // For instant sales, ensure all required fields are included
@@ -637,10 +637,10 @@ export class SalesNewComponent implements OnInit {
     }
 
     const paidAmount = data.paymentAmount || data.total; // If no payment amount specified, treat as full payment
-    
-    const saleId = await this.sales.createSale({ 
-      customer: this.customer, 
-      items, 
+
+    const saleId = await this.sales.createSale({
+      customer: this.customer,
+      items,
       type: this.mode,
       paid: paidAmount,
       soldBy: currentUser ? {
