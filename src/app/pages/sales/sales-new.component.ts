@@ -617,7 +617,8 @@ export class SalesNewComponent implements OnInit {
     if (this.mode === 'DIRECT') {
       // For direct sales, ensure all required fields are included
       items = data.cart.map(c => ({
-        productId: c.id,  // Use the Firestore document ID
+        productId: c.id,  // Use existing product ID
+        productSerialNumber: c.productId,
         qty: +c.qty,
         name: c.name,
         description: c.description, // Use existing product details
@@ -628,6 +629,7 @@ export class SalesNewComponent implements OnInit {
       // For instant sales, ensure all required fields are included
       items = data.cart.map(c => ({
         productId: c.productId,
+        productSerialNumber: c.productId,
         qty: +c.qty,
         name: c.name,
         description: c.description, // Use generated description

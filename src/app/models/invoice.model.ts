@@ -9,6 +9,7 @@ export interface Customer {
 
 export interface InvoiceItem {
   productId: string;
+  productSerialNumber?: string;
   name: string;
   serialNumber?: string;
   description?: string;

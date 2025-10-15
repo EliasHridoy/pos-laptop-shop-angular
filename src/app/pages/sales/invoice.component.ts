@@ -17,7 +17,7 @@ import { Invoice } from '../../models/invoice.model';
         <h2>Invoice #{{invoice.invoiceNo}}</h2>
         <button (click)="downloadPDF()" class="btn btn-primary">Download PDF</button>
       </div>
-      
+
       <div class="invoice-content">
         <div class="business-details">
           <h3>Laptop Shop</h3>
@@ -40,7 +40,7 @@ import { Invoice } from '../../models/invoice.model';
             <p *ngIf="invoice.note">Note: {{invoice.note}}</p>
           </div>
         </div>
-      
+
         <div class="invoice-items">
           <table class="items-table">
             <thead>
@@ -64,7 +64,7 @@ import { Invoice } from '../../models/invoice.model';
                     </div>
                   </div>
                 </td>
-                <td>{{item.productId || 'N/A'}}</td>
+                <td>{{item.productSerialNumber || 'N/A'}}</td>
                 <td>{{item.qty}}</td>
                 <td>{{item.sellPrice | number:'1.2-2'}}</td>
                 <td>{{(item.qty * item.sellPrice) | number:'1.2-2'}}</td>
@@ -463,7 +463,7 @@ private addItemsAndFinancialSummaryTable() {
       tableBody.push([
         `${index + 1}`,
         item.name + (descriptionText ? `\n${descriptionText}` : ''),
-        (item.productId || 'N/A'),
+        (item.productSerialNumber || 'N/A'),
         item.qty.toString(),
         `${item.sellPrice.toFixed(2)}`,
         `${(item.qty * item.sellPrice).toFixed(2)}`
@@ -496,7 +496,7 @@ private addItemsAndFinancialSummaryTable() {
         `${(this.invoice.total - this.invoice.paid).toFixed(2)}`
       ]);
     }
-    
+
     // AutoTable call remains the same
     autoTable(doc, {
       startY: this.currentY,
@@ -542,7 +542,7 @@ private addItemsAndFinancialSummaryTable() {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Gift Items:', 15, this.currentY);
-      
+
       autoTable(doc, {
         startY: this.currentY + 5,
         head: [['#', 'Item']],
@@ -567,11 +567,11 @@ private addItemsAndFinancialSummaryTable() {
     } else {
       this.currentY += 15;
     }
-  
+
     // Add signature lines
     doc.line(15, this.currentY, 65, this.currentY); // Customer Signature line
     doc.text('Customer Signature', 15, this.currentY + 5);
-    
+
     doc.line(145, this.currentY, 195, this.currentY); // Seller Signature line
     doc.text('Authorized Signature', 145, this.currentY + 5);
 

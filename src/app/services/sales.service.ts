@@ -116,6 +116,7 @@ export class SalesService {
           // Prepare line item
           lineItems.push({
             productId: productId,
+            productSerialNumber: data.productSerialNumber,
             name: productName,
             qty,
             sellPrice: finalSellPrice,
