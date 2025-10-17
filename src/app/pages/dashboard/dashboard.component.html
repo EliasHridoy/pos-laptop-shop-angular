@@ -61,7 +61,7 @@
             <td>{{ sale.customer?.name || 'N/A' }}</td>
             <td>{{ sale.createdAt.toDate() | date:'short' }}</td>
             <td>
-              <button class="view-btn" [routerLink]="['sales/invoice', sale.id]">View</button>
+              <button class="view-btn" [routerLink]="['/sales','invoice', sale.id]">View {{ sale.id }}</button>
             </td>
           </tr>
         </tbody>
