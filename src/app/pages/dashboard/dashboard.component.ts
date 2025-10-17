@@ -283,8 +283,13 @@ export class DashboardComponent implements OnInit {
       this.reportsService.getPurchasesForChart()
     ]);
 
+    console.log('Sales data fetched:', salesData.length, 'records');
+    console.log('Purchases data fetched:', purchasesData.length, 'records');
+
     // Aggregate data by month
     const monthlyData = this.aggregateDataByMonth(salesData, purchasesData);
+
+    console.log('Monthly aggregated data:', monthlyData);
 
     // Update chart data
     this.chartData.labels = monthlyData.map(d => d.month);
@@ -337,17 +342,21 @@ export class DashboardComponent implements OnInit {
       }
     });
 
+    console.log('Sales aggregated by month:', Array.from(monthlyMap.entries()).map(([month, data]) => ({ month, sales: data.sales })));
+
     // Aggregate purchases/stock-in data
     purchasesData.forEach(purchase => {
-      const date = purchase.createdAt?.toDate();
+      const date = purchase.Date?.toDate();
       if (date) {
         const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
         if (monthlyMap.has(monthKey)) {
           const current = monthlyMap.get(monthKey)!;
-          current.stockIn += purchase.total || 0;
+          current.stockIn += purchase.CostPrice || 0;
         }
       }
     });
+
+    console.log('Purchases aggregated by month:', Array.from(monthlyMap.entries()).map(([month, data]) => ({ month, stockIn: data.stockIn })));
 
     return Array.from(monthlyMap.entries()).map(([month, data]) => ({
       month,

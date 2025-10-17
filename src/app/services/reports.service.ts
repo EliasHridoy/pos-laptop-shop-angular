@@ -74,13 +74,9 @@ export class ReportsService {
 
   // Get purchases/stock-in data for last 12 months
   async getPurchasesForChart() {
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-
     const q = query(
-      collection(this.db, 'purchases'),
-      where('createdAt', '>=', twelveMonthsAgo),
-      orderBy('createdAt', 'asc')
+      collection(this.db, 'products'),
+      orderBy('Date', 'asc')
     );
 
     const snap = await getDocs(q);

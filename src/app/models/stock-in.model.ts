@@ -2,7 +2,7 @@ import { ProductStatus } from './product-status.enum';
 
 export interface StockInModel {
   No?: number;
-  Date?: string;
+  Date: Timestamp;
   Item?: string;
   categoryId?: string; // Display name Brand
   Brand?: string; // category name
