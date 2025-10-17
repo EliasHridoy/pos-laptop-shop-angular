@@ -14,7 +14,7 @@ export interface ExcelData {
   AskingPrice?: string;
   Revenue?: string;
   NetRevenue?: string;
-  SockOutDate?: string;
+  StockOutDate?: string;
   SaleInvoiceNo?: string;
   Status?: string;
   FeedBack?: string;

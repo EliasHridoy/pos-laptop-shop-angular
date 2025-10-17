@@ -89,7 +89,7 @@ import { NotificationService } from '../../services/notification.service';
               <td><input type="number" [(ngModel)]="row.AskingPrice" class="form-control" /></td>
               <td><input type="number" [(ngModel)]="row.Revenue" class="form-control" /></td>
               <td><input type="number" [(ngModel)]="row.NetRevenue" class="form-control" /></td>
-              <td><input [(ngModel)]="row.SockOutDate" class="form-control" /></td>
+              <td><input [(ngModel)]="row.StockOutDate" class="form-control" /></td>
               <td><input [(ngModel)]="row.SaleInvoiceNo" class="form-control" /></td>
               <td><input [(ngModel)]="row.FeedBack" class="form-control" /></td>
             </tr>
@@ -265,11 +265,11 @@ export class ExcelUploadComponent {
         .filter(x => x.row.Status === ProductStatus.Sold && x.id);
 
       const salePayloads = soldRows.map(s => {
-        // build custom invoiceNo if both SockOutDate and SaleInvoiceNo are present
+        // build custom invoiceNo if both StockOutDate and SaleInvoiceNo are present
         let invoiceNo: string | undefined = undefined;
-        if (s.row.SockOutDate && s.row.SaleInvoiceNo) {
-          // Normalize SockOutDate to YYYYMMDD if possible (handle YYYY-MM-DD or YYYY/MM/DD)
-          const d = String(s.row.SockOutDate).replace(/\//g, '-');
+        if (s.row.StockOutDate && s.row.SaleInvoiceNo) {
+          // Normalize StockOutDate to YYYYMMDD if possible (handle YYYY-MM-DD or YYYY/MM/DD)
+          const d = String(s.row.StockOutDate).replace(/\//g, '-');
           const parts = d.split('-').map(p => p.padStart(2, '0'));
           if (parts.length >= 3) {
             const y = parts[0];
@@ -351,7 +351,7 @@ export class ExcelUploadComponent {
         AskingPrice: excelRow.AskingPrice ? parseFloat(excelRow.AskingPrice.replace(/,/g, '')) : undefined,
         Revenue: excelRow.Revenue ? parseFloat(excelRow.Revenue.replace(/,/g, '')) : undefined,
         NetRevenue: excelRow.NetRevenue ? parseFloat(excelRow.NetRevenue.replace(/,/g, '')) : undefined,
-        SockOutDate: excelRow.SockOutDate,
+        StockOutDate: excelRow.StockOutDate,
         SaleInvoiceNo: excelRow.SaleInvoiceNo,
         Description: description,
         Status: this.mapStatus(excelRow.Status),

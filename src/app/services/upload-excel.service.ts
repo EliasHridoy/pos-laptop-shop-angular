@@ -30,12 +30,12 @@ export class UploadExcelService {
     const propertyNames: (keyof ExcelData)[] = [
       'No', 'Date', 'Item', 'Brand', 'Series', 'Model', 'Processor', 'Genaration',
       'RAM', 'ROM', 'ProductID', 'CostPrice', 'AskingPrice', 'Revenue', 'NetRevenue',
-      'SockOutDate', 'SaleInvoiceNo', 'Status', 'FeedBack'
+      'StockOutDate', 'SaleInvoiceNo', 'Status', 'FeedBack'
     ];
 
     for (const sheetName of wb.SheetNames) {
       const ws = wb.Sheets[sheetName];
-      
+
       // Convert to array of arrays.
       const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, {
         header: 1,

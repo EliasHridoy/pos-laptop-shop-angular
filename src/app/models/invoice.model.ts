@@ -16,6 +16,7 @@ export interface InvoiceItem {
   qty: number;
   sellPrice: number;
   costPrice: number;
+  stockOutDate: Timestamp;
 }
 
 export interface SoldBy {

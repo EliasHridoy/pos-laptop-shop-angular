@@ -150,7 +150,7 @@ export class SalesService {
             if (!isInstant && ref) {
               tx.update(ref, {
                 Status: ProductStatus.Sold,
-                SockOutDate: new Date().toISOString().split('T')[0]
+                StockOutDate: new Date().toISOString().split('T')[0]
               });
             }
           });
@@ -258,7 +258,7 @@ export class SalesService {
               try {
                 tx.update(pRef, {
                   Status: ProductStatus.Available,
-                  SockOutDate: null
+                  StockOutDate: null
                 });
               } catch (e) {
                 // ignore individual product update failures to avoid blocking the whole transaction
@@ -284,7 +284,7 @@ export class SalesService {
               try {
                 tx.update(pRef, {
                   Status: ProductStatus.Sold,
-                  SockOutDate: new Date().toISOString().split('T')[0]
+                  StockOutDate: new Date().toISOString().split('T')[0]
                 });
               } catch (e) {
                 // ignore
@@ -363,7 +363,7 @@ export class SalesService {
               try {
                 tx.update(pRef, {
                   Status: ProductStatus.Available,
-                  SockOutDate: null
+                  StockOutDate: null
                 });
               } catch (e) {
                 // ignore per-product failures

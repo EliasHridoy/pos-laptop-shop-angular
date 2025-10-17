@@ -18,7 +18,7 @@ export interface StockInModel {
   AskingPrice?: number;
   Revenue?: number;
   NetRevenue?: number;
-  SockOutDate?: string;
+  StockOutDate?: string;
   SaleInvoiceNo?: string;
   Description?: string;
   Status?: ProductStatus;

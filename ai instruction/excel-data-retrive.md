@@ -19,7 +19,7 @@ This service supports two product insertion modes: **Bulk (via Excel upload)** a
         * No, Date, Item, Brand, Series, Model, Processor, Genaration, RAM, ROM, Product ID, Cost Price, Asking Price, Revenue, Net Revenue, Sock Out Date, S. Invoice No, Status, FeedBack
 
     * **ExcelData Interface Properties:**
-        * No, Date, Item, Brand, Series, Model, Processor, Genaration, RAM, ROM, ProductID, CostPrice, AskingPrice, Revenue, NetRevenue, SockOutDate, SaleInvoiceNo, Status, FeedBack
+        * No, Date, Item, Brand, Series, Model, Processor, Genaration, RAM, ROM, ProductID, CostPrice, AskingPrice, Revenue, NetRevenue, StockOutDate, SaleInvoiceNo, Status, FeedBack
 
 3.  **Sales Record Insertion:**
     * Insert data into the **sales collection** only if the Excel column `ExcelData.Status` has the value "**Sold**".
@@ -33,13 +33,10 @@ This service supports two product insertion modes: **Bulk (via Excel upload)** a
 5.  **Data Type Conversions:**
 
     * **Date Conversion:**
-        * Excel dates are in **mm/dd/yyyy** format (for fields like `ExcelData.Date` and `SockOutDate`).
+        * Excel dates are in **mm/dd/yyyy** format (for fields like `ExcelData.Date` and `StockOutDate`).
         * Implement necessary conversion before database insertion.
 
     * **Number Conversion:**
         * Convert the following fields to the correct **number type** : `CostPrice`, `Revenue`, `NetRevenue`.
 
-6. 
-
-
-
+6.
