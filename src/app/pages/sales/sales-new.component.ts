@@ -384,7 +384,9 @@ export class SalesNewComponent implements OnInit {
   categories: any[] = [];
   subcategories: any[] = [];
 
-  productForm: StockInModel = {
+  // use `any` for UI-bound form so Date can be a string for input[type=date]
+  productForm: any = {
+    Date: new Date().toISOString().slice(0, 10),
     Item: 'Laptop',
     Brand: '',
     categoryId: '',
@@ -536,6 +538,7 @@ export class SalesNewComponent implements OnInit {
 
   resetProductForm() {
     this.productForm = {
+      Date: new Date().toISOString().slice(0, 10),
       Item: 'Laptop',
       Brand: '',
       categoryId: '',

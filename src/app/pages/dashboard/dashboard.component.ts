@@ -303,7 +303,7 @@ export class DashboardComponent implements OnInit {
 
   private calculatePeriodStats(sales: any[], startDate: Date, endDate: Date): { value: number; count: number } {
     const periodSales = sales.filter(sale => {
-      const saleDate = sale.createdAt?.toDate();
+      const saleDate = this.toJsDate(sale.createdAt);
       return saleDate && saleDate >= startDate && saleDate < endDate;
     });
 
@@ -332,7 +332,7 @@ export class DashboardComponent implements OnInit {
 
     // Aggregate sales data
     salesData.forEach(sale => {
-      const date = sale.createdAt?.toDate();
+      const date = this.toJsDate(sale.createdAt);
       if (date) {
         const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
         if (monthlyMap.has(monthKey)) {
@@ -346,7 +346,7 @@ export class DashboardComponent implements OnInit {
 
     // Aggregate purchases/stock-in data
     purchasesData.forEach(purchase => {
-      const date = purchase.Date?.toDate();
+      const date = this.toJsDate(purchase.Date);
       if (date) {
         const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
         if (monthlyMap.has(monthKey)) {
@@ -363,5 +363,35 @@ export class DashboardComponent implements OnInit {
       sales: data.sales,
       stockIn: data.stockIn
     }));
+  }
+
+  private toJsDate(value: any): Date | null {
+    if (!value) return null;
+    // Firestore Timestamp has toDate()
+    if (typeof value.toDate === 'function') {
+      try {
+        const d = value.toDate();
+        if (d instanceof Date && !isNaN(d.getTime())) return d;
+      } catch (e) {
+        // fallthrough
+      }
+    }
+    // If it's a JS Date
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : value;
+    }
+    // If it's a number (ms since epoch) or numeric string
+    const num = typeof value === 'number' ? value : (typeof value === 'string' && /^\d+$/.test(value) ? parseInt(value, 10) : NaN);
+    if (!isNaN(num)) {
+      const d = new Date(num);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    // Try parsing as string date
+    if (typeof value === 'string') {
+      const normalized = value.replace(/\//g, '-');
+      const d = new Date(normalized);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
   }
 }

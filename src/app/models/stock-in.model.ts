@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import { ProductStatus } from './product-status.enum';
 
 export interface StockInModel {
@@ -18,7 +19,8 @@ export interface StockInModel {
   AskingPrice?: number;
   Revenue?: number;
   NetRevenue?: number;
-  StockOutDate?: string;
+  // StockOutDate may be a user-entered string (YYYY-MM-DD) or a Firestore Timestamp after conversion
+  StockOutDate?: Timestamp | string;
   SaleInvoiceNo?: string;
   Description?: string;
   Status?: ProductStatus;

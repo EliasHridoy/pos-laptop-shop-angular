@@ -344,7 +344,7 @@ export class ExcelUploadComponent {
   private transformToStockIn(data: ExcelData[]): StockInModel[] {
     return data.map(excelRow => ({
       No: excelRow.No ? parseInt(excelRow.No, 10) : undefined,
-      Date: excelRow.Date,
+      Date: this.convertToTimestamp(excelRow.Date),
       Item: excelRow.Item,
       Brand: excelRow.Brand,
       Series: excelRow.Series,
@@ -358,7 +358,7 @@ export class ExcelUploadComponent {
       AskingPrice: this.parseNumericValue(excelRow.AskingPrice),
       Revenue: this.parseNumericValue(excelRow.Revenue),
       NetRevenue: this.parseNumericValue(excelRow.NetRevenue),
-      StockOutDate: excelRow.StockOutDate,
+      StockOutDate: excelRow.StockOutDate ? this.convertToTimestamp(excelRow.StockOutDate) : undefined,
       SaleInvoiceNo: excelRow.SaleInvoiceNo,
       Description: excelRow.Description,
       Status: this.mapStatus(excelRow.Status),
@@ -367,9 +367,38 @@ export class ExcelUploadComponent {
   }
 
   private convertToTimestamp(dateStr?: string): Timestamp {
-    if (!dateStr) return Timestamp.now(); // or null, but since it's required, use current time
-    const date = new Date(dateStr);
-    return Timestamp.fromDate(date);
+    if (!dateStr) return Timestamp.now();
+    // If it's already a Timestamp (from previous runs), return as-is
+    if ((dateStr as any)?.toDate && typeof (dateStr as any).toDate === 'function') {
+      return dateStr as unknown as Timestamp;
+    }
+
+    // If it's a number (Excel serial number), convert from days since 1899-12-30
+    if (typeof dateStr === 'number') {
+      const excelEpoch = new Date(1899, 11, 30);
+      const ms = (dateStr as number) * 24 * 60 * 60 * 1000;
+      return Timestamp.fromDate(new Date(excelEpoch.getTime() + ms));
+    }
+
+    // Normalize string separators and try to parse
+    const s = String(dateStr).trim();
+    // If looks like YYYYMMDD (e.g., 20251017)
+    if (/^\d{8}$/.test(s)) {
+      const y = parseInt(s.slice(0, 4), 10);
+      const m = parseInt(s.slice(4, 6), 10) - 1;
+      const d = parseInt(s.slice(6, 8), 10);
+      return Timestamp.fromDate(new Date(y, m, d));
+    }
+
+    // Replace slashes with dashes to help ISO parsing
+    const normalized = s.replace(/\//g, '-');
+    const date = new Date(normalized);
+    if (!isNaN(date.getTime())) {
+      return Timestamp.fromDate(date);
+    }
+
+    // Fallback to current time
+    return Timestamp.now();
   }
 
   private parseNumericValue(value: string | number | undefined): number | undefined {

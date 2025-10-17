@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgFor, NgIf, DatePipe, DecimalPipe } from '@angular/common';
+import { Timestamp } from 'firebase/firestore';
 import { ProductsService } from '../../services/products.service';
 import { CatalogService } from '../../services/catalog.service';
 import { NgxPaginationModule } from 'ngx-pagination';  // Correct import
@@ -612,9 +613,11 @@ export class ProductsComponent implements OnInit {
     return `status-badge ${status.toLowerCase()}`;
   }
 
-  form: StockInModel = {
+  // Use `any` here to allow binding date string for the input and convert to Timestamp on save
+  form: any = {
     No: undefined,
-    Date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD format for input[type="date"]
+    // Keep string YYYY-MM-DD for binding to <input type="date">; will convert to Timestamp on save
+    Date: new Date().toISOString().slice(0, 10) as any,
     Item: 'Laptop',
     Brand: '',
     categoryId: '',
@@ -713,6 +716,18 @@ export class ProductsComponent implements OnInit {
       ].filter((s): s is string => Boolean(s)).map(s => s.toLowerCase())
     };
 
+    // Convert Date string (YYYY-MM-DD) to Firestore Timestamp if needed
+    const dateVal = (this.form as any).Date;
+    if (typeof dateVal === 'string' && dateVal) {
+      // Construct a Date from YYYY-MM-DD
+      const d = new Date(dateVal);
+      (productData as any).Date = Timestamp.fromDate(d);
+    } else if (dateVal instanceof Timestamp) {
+      (productData as any).Date = dateVal;
+    } else if (dateVal instanceof Date) {
+      (productData as any).Date = Timestamp.fromDate(dateVal);
+    }
+
     if (this.editingId) {
       await this.svc.updateProduct(this.editingId, productData);
     } else {
@@ -726,7 +741,18 @@ export class ProductsComponent implements OnInit {
     this.showForm = true;
     this.showDetails = false;
     this.editingId = p.id;
-    this.form = { ...p };
+    // Normalize Date for the form input: if it's a Firestore Timestamp, convert to YYYY-MM-DD string
+    const dateVal = (p as any).Date;
+    const formCopy: any = { ...p };
+    if (dateVal && (dateVal as any).toDate && typeof (dateVal as any).toDate === 'function') {
+      const d = (dateVal as any).toDate();
+      formCopy.Date = d.toISOString().slice(0, 10);
+    } else if (dateVal instanceof Date) {
+      formCopy.Date = dateVal.toISOString().slice(0, 10);
+    } else if (typeof dateVal === 'string') {
+      formCopy.Date = dateVal;
+    }
+    this.form = formCopy;
   }
 
   cancelEdit() { this.resetForm(); }
