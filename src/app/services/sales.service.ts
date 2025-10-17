@@ -116,7 +116,7 @@ export class SalesService {
           // Prepare line item
           lineItems.push({
             productId: productId,
-            productSerialNumber: data.productSerialNumber,
+            productSerialNumber: data.productSerialNumber ?? null,
             name: productName,
             qty,
             sellPrice: finalSellPrice,
@@ -148,7 +148,10 @@ export class SalesService {
         if (payload.type === 'DIRECT') {
           productReads.forEach(({ ref, isInstant }) => {
             if (!isInstant && ref) {
-              tx.update(ref, { Status: ProductStatus.Sold });
+              tx.update(ref, {
+                Status: ProductStatus.Sold,
+                SockOutDate: new Date().toISOString().split('T')[0]
+              });
             }
           });
         }
@@ -170,7 +173,7 @@ export class SalesService {
           costTotal,
           profit: subTotal - costTotal,
           customer: payload.customer || null,
-          soldBy: payload.soldBy || null,
+          soldBy: payload.soldBy ?? null,
           note: payload.note || '',
           status: 'Active',
           createdAt: serverTimestamp(),
@@ -253,7 +256,10 @@ export class SalesService {
               const pRef = doc(this.db, 'products', it.productId);
               // set product available again
               try {
-                tx.update(pRef, { Status: ProductStatus.Available });
+                tx.update(pRef, {
+                  Status: ProductStatus.Available,
+                  SockOutDate: null
+                });
               } catch (e) {
                 // ignore individual product update failures to avoid blocking the whole transaction
               }
@@ -276,7 +282,10 @@ export class SalesService {
             if (!it.isInstant && it.productId) {
               const pRef = doc(this.db, 'products', it.productId);
               try {
-                tx.update(pRef, { Status: ProductStatus.Sold });
+                tx.update(pRef, {
+                  Status: ProductStatus.Sold,
+                  SockOutDate: new Date().toISOString().split('T')[0]
+                });
               } catch (e) {
                 // ignore
               }
@@ -352,7 +361,10 @@ export class SalesService {
             if (!it.isInstant && it.productId) {
               const pRef = doc(this.db, 'products', it.productId);
               try {
-                tx.update(pRef, { Status: ProductStatus.Available });
+                tx.update(pRef, {
+                  Status: ProductStatus.Available,
+                  SockOutDate: null
+                });
               } catch (e) {
                 // ignore per-product failures
               }

@@ -282,7 +282,8 @@ export class ExcelUploadComponent {
         return {
           customer: null,
           items: [{
-            productId: s.row.ProductID,
+            productId: s.id,
+            productSerialNumber: s.row.ProductID,
             name: s.row.Item || '',
             qty: 1,
             sellPrice: Number(s.row.Revenue || 0),

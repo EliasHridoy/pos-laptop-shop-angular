@@ -53,8 +53,14 @@ export class ProductsService {
         // Product Details
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
+        AskingPrice: Number(p.AskingPrice || 0),
+        Revenue: Number(p.Revenue || 0),
+        NetRevenue: Number(p.NetRevenue || 0),
+        SockOutDate: p.SockOutDate || null,
+        SaleInvoiceNo: p.SaleInvoiceNo || null,
         Description: p.Description || '',
-  Status: p.Status || ProductStatus.Available,
+        Status: p.Status || ProductStatus.Available,
+        FeedBack: p.FeedBack || null,
 
         // Generated Fields
         details: this.generateProductDescription(p),
@@ -111,8 +117,14 @@ export class ProductsService {
         ROM: p.ROM || '',
         ProductID: p.ProductID || '',
         CostPrice: Number(p.CostPrice || 0),
+        AskingPrice: Number(p.AskingPrice || 0),
+        Revenue: Number(p.Revenue || 0),
+        NetRevenue: Number(p.NetRevenue || 0),
+        SockOutDate: p.SockOutDate || null,
+        SaleInvoiceNo: p.SaleInvoiceNo || null,
         Description: p.Description || '',
-  Status: p.Status || ProductStatus.Available,
+        Status: p.Status || ProductStatus.Available,
+        FeedBack: p.FeedBack || null,
         details: this.generateProductDescription(p),
         keywords: [
           p.Item,
