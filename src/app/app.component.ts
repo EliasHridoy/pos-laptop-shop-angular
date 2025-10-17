@@ -41,6 +41,6 @@ import { AsyncPipe, NgIf } from '@angular/common';
 })
 export class AppComponent {
   auth = inject(AuthService);
+  title = 'pos-laptop-shop-angular';
 
 }
- 

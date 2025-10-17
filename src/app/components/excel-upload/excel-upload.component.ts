@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Timestamp } from '@angular/fire/firestore';
 import { UploadExcelService, SheetJson } from '../../services/upload-excel.service';
 import { ExcelData } from '../../models/excel-data.model';
 import { StockInModel } from '../../models/stock-in.model';
@@ -165,8 +166,8 @@ export class ExcelUploadComponent {
   // maximum file size allowed (bytes)
   readonly maxFileSize = 10 * 1024 * 1024; // 10 MB
 
-  allStockInRows: StockInModel[] = [];
-  currentBatch: StockInModel[] = [];
+  allStockInRows: ExcelData[] = [];
+  currentBatch: ExcelData[] = [];
   currentPage = 0;
   batchSize = 100;
   totalRows = 0;
@@ -204,7 +205,7 @@ export class ExcelUploadComponent {
       const data = await this.excel.readFileToJson(file);
       if (data.length > 0) {
         const firstSheet = data[0];
-        this.allStockInRows = this.transformToStockIn(firstSheet.rows);
+        this.allStockInRows = this.transformToExcelData(firstSheet.rows);
         this.totalRows = this.allStockInRows.length;
         this.loadCurrentBatch();
         this.notification.success('File loaded. Review the batch before saving.');
@@ -256,7 +257,8 @@ export class ExcelUploadComponent {
     if (this.isSaving) return;
     this.isSaving = true;
     try {
-      const createdIds = (await this.productsService.addProductsBatch(this.currentBatch)) as string[];
+      const stockInData = this.transformToStockIn(this.currentBatch);
+      const createdIds = (await this.productsService.addProductsBatch(stockInData)) as string[];
 
       // For any row that was imported with Status = Sold, create a sale record
       // We treat these as DIRECT sales because the products were just created in products collection
@@ -288,7 +290,8 @@ export class ExcelUploadComponent {
             qty: 1,
             sellPrice: Number(s.row.Revenue || 0),
             costPrice: Number(s.row.CostPrice || 0),
-            description: s.row.Description || ''
+            description: s.row.Description || '',
+            stockOutDate: this.convertToTimestamp(s.row.StockOutDate)
           }],
           type: 'DIRECT' as const,
           note: `Imported from Excel row No ${s.row.No || ''}`,
@@ -328,36 +331,52 @@ export class ExcelUploadComponent {
     this.fileName = '';
   }
 
-  private transformToStockIn(data: ExcelData[]): StockInModel[] {
-    return data.map(excelRow => {
-      const description = [
+  private transformToExcelData(data: ExcelData[]): ExcelData[] {
+    return data.map(excelRow => ({
+      ...excelRow,
+      Description: [
         excelRow.Item, excelRow.Brand, excelRow.Series, excelRow.Model, excelRow.Processor,
         excelRow.Genaration, `RAM: ${excelRow.RAM}`, `ROM: ${excelRow.ROM}`
-      ].filter(Boolean).join(', ');
+      ].filter(Boolean).join(', ')
+    }));
+  }
 
-      return {
-        No: excelRow.No ? parseInt(excelRow.No, 10) : undefined,
-        Date: excelRow.Date,
-        Item: excelRow.Item,
-        Brand: excelRow.Brand,
-        Series: excelRow.Series,
-        Model: excelRow.Model,
-        Processor: excelRow.Processor,
-        Genaration: excelRow.Genaration,
-        RAM: excelRow.RAM,
-        ROM: excelRow.ROM,
-        ProductID: excelRow.ProductID,
-        CostPrice: excelRow.CostPrice ? parseFloat(excelRow.CostPrice.replace(/,/g, '')) : undefined,
-        AskingPrice: excelRow.AskingPrice ? parseFloat(excelRow.AskingPrice.replace(/,/g, '')) : undefined,
-        Revenue: excelRow.Revenue ? parseFloat(excelRow.Revenue.replace(/,/g, '')) : undefined,
-        NetRevenue: excelRow.NetRevenue ? parseFloat(excelRow.NetRevenue.replace(/,/g, '')) : undefined,
-        StockOutDate: excelRow.StockOutDate,
-        SaleInvoiceNo: excelRow.SaleInvoiceNo,
-        Description: description,
-        Status: this.mapStatus(excelRow.Status),
-        FeedBack: excelRow.FeedBack,
-      };
-    });
+  private transformToStockIn(data: ExcelData[]): StockInModel[] {
+    return data.map(excelRow => ({
+      No: excelRow.No ? parseInt(excelRow.No, 10) : undefined,
+      Date: excelRow.Date,
+      Item: excelRow.Item,
+      Brand: excelRow.Brand,
+      Series: excelRow.Series,
+      Model: excelRow.Model,
+      Processor: excelRow.Processor,
+      Genaration: excelRow.Genaration,
+      RAM: excelRow.RAM,
+      ROM: excelRow.ROM,
+      ProductID: excelRow.ProductID,
+      CostPrice: this.parseNumericValue(excelRow.CostPrice),
+      AskingPrice: this.parseNumericValue(excelRow.AskingPrice),
+      Revenue: this.parseNumericValue(excelRow.Revenue),
+      NetRevenue: this.parseNumericValue(excelRow.NetRevenue),
+      StockOutDate: excelRow.StockOutDate,
+      SaleInvoiceNo: excelRow.SaleInvoiceNo,
+      Description: excelRow.Description,
+      Status: this.mapStatus(excelRow.Status),
+      FeedBack: excelRow.FeedBack,
+    }));
+  }
+
+  private convertToTimestamp(dateStr?: string): Timestamp {
+    if (!dateStr) return Timestamp.now(); // or null, but since it's required, use current time
+    const date = new Date(dateStr);
+    return Timestamp.fromDate(date);
+  }
+
+  private parseNumericValue(value: string | number | undefined): number | undefined {
+    if (value == null || value === '') return undefined;
+    const strValue = typeof value === 'string' ? value.replace(/,/g, '') : String(value);
+    const parsed = parseFloat(strValue);
+    return isNaN(parsed) ? undefined : parsed;
   }
 
   private mapStatus(status?: string): ProductStatus {

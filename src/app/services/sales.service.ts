@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, runTransaction, serverTimestamp, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, doc, runTransaction, serverTimestamp, query, where, getDocs, Timestamp } from '@angular/fire/firestore';
 import { CountersService } from './counters.service';
 import { NotificationService } from './notification.service';
 import { ProductStatus } from '../models/product-status.enum';
@@ -25,7 +25,7 @@ export class SalesService {
     soldBy?: { uid: string, displayName: string | null, email: string | null },
     // Optional: if provided, use this invoiceNo instead of generating a new one via counters
     invoiceNo?: string
-  }, silent: boolean = false) {
+  }, silent: boolean = false, useItemStockOutDate: boolean = false) {
     if (!payload.items?.length) throw new Error('No items');
     try {
       const saleId: SaleIdResponse = await runTransaction(this.db, async (tx) => {
@@ -122,7 +122,8 @@ export class SalesService {
             sellPrice: finalSellPrice,
             costPrice,
             description: productDescription,
-            isInstant: isInstant || false
+            isInstant: isInstant || false,
+            stockOutDate: useItemStockOutDate ? (data.stockOutDate || Timestamp.now()) : Timestamp.now()
           });
 
           // Only create stock movements for direct sales (actual products)
@@ -146,11 +147,11 @@ export class SalesService {
 
         // Only update product status for direct sales
         if (payload.type === 'DIRECT') {
-          productReads.forEach(({ ref, isInstant }) => {
+          productReads.forEach(({ ref, data, isInstant }) => {
             if (!isInstant && ref) {
               tx.update(ref, {
                 Status: ProductStatus.Sold,
-                StockOutDate: new Date().toISOString().split('T')[0]
+                StockOutDate: data.stockOutDate ? data.stockOutDate.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
               });
             }
           });
@@ -200,11 +201,12 @@ export class SalesService {
     note?: string,
     paid?: number,
     soldBy?: { uid: string, displayName: string | null, email: string | null },
-    invoiceNo?: string
+    invoiceNo?: string,
+    stockOutDate?:Timestamp
   }>) {
     const results: string[] = [];
     for (const payload of payloads) {
-      const id = await this.createSale(payload, true); // silent
+      const id = await this.createSale(payload, true, true); // silent, use item stockOutDate
       results.push(id);
     }
     this.notification.success(`${results.length} sales created successfully!`);
@@ -284,7 +286,7 @@ export class SalesService {
               try {
                 tx.update(pRef, {
                   Status: ProductStatus.Sold,
-                  StockOutDate: new Date().toISOString().split('T')[0]
+                  StockOutDate: it.stockOutDate ? it.stockOutDate.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
                 });
               } catch (e) {
                 // ignore

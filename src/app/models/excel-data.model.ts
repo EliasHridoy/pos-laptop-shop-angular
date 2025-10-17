@@ -18,4 +18,5 @@ export interface ExcelData {
   SaleInvoiceNo?: string;
   Status?: string;
   FeedBack?: string;
+  Description?: string;
 }
