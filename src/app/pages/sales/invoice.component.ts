@@ -593,7 +593,13 @@ private addItemsAndFinancialSummaryTable() {
       'does not cover Service/Warranty.',
       '',
       '3. Warranty is void if opened/used elsewhere. This Product has to be returned to the place of purchase after taking proper backup. The company is not',
-      'held responsible for any data loss/damage during service. Please avoid shock, liquid damage (Water, soft Drink, Coffee, but not limited to).'
+      'held responsible for any data loss/damage during service. Please avoid shock, liquid damage (Water, soft Drink, Coffee, but not limited to).',
+      '',
+       '4. Display warranty: There will be no warranty on the display after sale. And same condition with keyboard.',
+       '',
+        '5. Any accidental issues will void service warranty. (For example – in case of Laptops; broken display, Broken camera, bending, scratch, dent, burn, soaked or liquid damage, root or manual update will not be covered under warranty).',
+        '',
+        '6. You will have to ensure that the problem has been described in details and elaborately in the given Return/Servicing Form and send the device along with the form.'
     ];
 
     let yPosition = this.currentY + 5;
