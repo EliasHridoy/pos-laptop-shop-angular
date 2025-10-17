@@ -302,20 +302,41 @@ export class DashboardComponent implements OnInit {
   }
 
   private calculatePeriodStats(sales: any[], startDate: Date, endDate: Date): { value: number; count: number } {
-    const periodSales = sales.filter(sale => {
-      const saleDate = this.toJsDate(sale.createdAt);
-      return saleDate && saleDate >= startDate && saleDate < endDate;
-    });
+    // Sum item-level values using stockOutDate from each item.
+    let value = 0;
+    let count = 0;
 
-    const value = periodSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    const count = periodSales.length;
+    sales.forEach(sale => {
+      if (!sale.items || !Array.isArray(sale.items)) return;
+      sale.items.forEach((item: any) => {
+        const date = this.toJsDate(item.stockOutDate) || this.toJsDate(sale.createdAt);
+        if (date && date >= startDate && date < endDate) {
+          const qty = Number(item.qty) || 0;
+          const price = Number(item.sellPrice) || 0;
+          value += qty * price;
+          count += qty;
+        }
+      });
+    });
 
     return { value, count };
   }
 
   private calculateTotalStats(sales: any[]): { value: number; count: number } {
-    const value = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    const count = sales.length;
+    // Aggregate across all items in all sales. Value = sum(qty * sellPrice). Count = sum(qty).
+    let value = 0;
+    let count = 0;
+
+    sales.forEach(sale => {
+      if (!sale.items || !Array.isArray(sale.items)) return;
+      sale.items.forEach((item: any) => {
+        const qty = Number(item.qty) || 0;
+        const price = Number(item.sellPrice) || 0;
+        value += qty * price;
+        count += qty;
+      });
+    });
+
     return { value, count };
   }
 
@@ -330,16 +351,22 @@ export class DashboardComponent implements OnInit {
       monthlyMap.set(monthKey, { sales: 0, stockIn: 0 });
     }
 
-    // Aggregate sales data
+
+    // Aggregate sales data at item level using item.stockOutDate (fallback to sale.createdAt)
     salesData.forEach(sale => {
-      const date = this.toJsDate(sale.createdAt);
-      if (date) {
-        const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        if (monthlyMap.has(monthKey)) {
-          const current = monthlyMap.get(monthKey)!;
-          current.sales += sale.total || 0;
+      if (!sale.items || !Array.isArray(sale.items)) return;
+      sale.items.forEach((item: any) => {
+        const date = this.toJsDate(item.stockOutDate) || this.toJsDate(sale.createdAt);
+        if (date) {
+          const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+          if (monthlyMap.has(monthKey)) {
+            const current = monthlyMap.get(monthKey)!;
+            const qty = Number(item.qty) || 0;
+            const price = Number(item.sellPrice) || 0;
+            current.sales += qty * price;
+          }
         }
-      }
+      });
     });
 
     console.log('Sales aggregated by month:', Array.from(monthlyMap.entries()).map(([month, data]) => ({ month, sales: data.sales })));
