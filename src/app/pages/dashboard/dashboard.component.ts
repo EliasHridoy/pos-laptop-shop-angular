@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
@@ -163,9 +163,12 @@ interface ChartDataPoint {
   `]
 })
 export class DashboardComponent implements OnInit {
+  @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
+
   private salesService = inject(SalesService);
   private reportsService = inject(ReportsService);
   private purchasesService = inject(PurchasesService);
+  private cdr = inject(ChangeDetectorRef);
 
   summary: SalesSummary = {
     today: { value: 0, count: 0 },
@@ -295,6 +298,18 @@ export class DashboardComponent implements OnInit {
     this.chartData.labels = monthlyData.map(d => d.month);
     this.chartData.datasets[0].data = monthlyData.map(d => d.sales);
     this.chartData.datasets[1].data = monthlyData.map(d => d.stockIn);
+
+    // Ensure Angular change detection runs and Chart.js redraws after async data load.
+    // Calling detectChanges then update() addresses the issue where the chart only
+    // renders when developer console opens (Chrome forces a repaint).
+    try {
+      this.cdr.detectChanges();
+      // Use optional chaining in case chart isn't initialized yet
+      this.chart?.update();
+    } catch (e) {
+      // swallow errors but log for debugging
+      console.warn('Chart update/detectChanges failed:', e);
+    }
   }
 
   private async loadLast10Sales() {
